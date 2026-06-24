@@ -1,5 +1,5 @@
 {
-    "name": "openwa/sdk",
+    "name": "openwa/client",
     "description": "Official PHP SDK for OpenWA WhatsApp API Gateway",
     "type": "library",
     "license": "MIT",

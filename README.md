@@ -6,12 +6,8 @@ A synchronous client built on [Guzzle](https://docs.guzzlephp.org/), PSR-4 autol
 
 ## Install
 
-> **Not yet published to Packagist.** Until the first release, install from a
-> checkout of the repo (`cd sdk/php && composer install`) or point Composer at
-> the repository directly.
-
 ```bash
-composer require rmyndharis/openwa   # once published
+composer require rmyndharis/openwa
 ```
 
 Requires PHP 8.1+ and Guzzle 7. The namespace is `OpenWA\`.

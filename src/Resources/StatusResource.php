@@ -34,8 +34,9 @@ class StatusResource
     }
 
     /**
-     * @param array<string,mixed> $body Body must include a required `recipients` key
-     *                                   (list<string> of recipient JIDs; empty -> 400).
+     * @param array<string,mixed> $body Body may include a `recipients` key (list<string> of JIDs).
+     *                                   Required on the Baileys engine (absent/empty -> 400 there);
+     *                                   ignored by whatsapp-web.js — omit it there.
      * @return array<string,mixed>
      */
     public function sendText(string $sessionId, array $body): array
@@ -44,8 +45,9 @@ class StatusResource
     }
 
     /**
-     * @param array<string,mixed> $body Body must include a required `recipients` key
-     *                                   (list<string> of recipient JIDs; empty -> 400).
+     * @param array<string,mixed> $body Body may include a `recipients` key (list<string> of JIDs).
+     *                                   Required on the Baileys engine (absent/empty -> 400 there);
+     *                                   ignored by whatsapp-web.js — omit it there.
      * @return array<string,mixed>
      */
     public function sendImage(string $sessionId, array $body): array
@@ -54,8 +56,9 @@ class StatusResource
     }
 
     /**
-     * @param array<string,mixed> $body Body must include a required `recipients` key
-     *                                   (list<string> of recipient JIDs; empty -> 400).
+     * @param array<string,mixed> $body Body may include a `recipients` key (list<string> of JIDs).
+     *                                   Required on the Baileys engine (absent/empty -> 400 there);
+     *                                   ignored by whatsapp-web.js — omit it there.
      * @return array<string,mixed>
      */
     public function sendVideo(string $sessionId, array $body): array

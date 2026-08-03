@@ -304,6 +304,16 @@ class ResourcesTest extends TestCase
         $this->assertSame(['video' => ['url' => 'http://vid'], 'recipients' => ['a@c.us']], $backend->lastCall()['body']);
     }
 
+    public function testVotePollPostsOptionTexts(): void
+    {
+        $backend = new MockBackend();
+        $backend->on(200, ['success' => true]);
+        $client = $backend->makeClient();
+        $client->messages->votePoll('s', ['chatId' => 'c1', 'pollMessageId' => 'p1', 'options' => ['Pizza']]);
+        $this->assertSame('/api/sessions/s/messages/vote-poll', $backend->lastCall()['path']);
+        $this->assertSame('POST', $backend->lastCall()['method']);
+    }
+
     public function testStarPostsTheBooleanThrough(): void
     {
         $backend = new MockBackend();

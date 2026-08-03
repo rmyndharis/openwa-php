@@ -176,6 +176,17 @@ class MessagesResource
     }
 
     /**
+     * Cast a vote on a poll. Not supported on the Baileys engine (501).
+     *
+     * @param array<string,mixed> $body chatId, pollMessageId and options (option TEXTS; [] clears).
+     * @return array<string,mixed>
+     */
+    public function votePoll(string $sessionId, array $body): array
+    {
+        return $this->http->request('POST', "/api/sessions/{$this->http->encodeSegment($sessionId)}/messages/vote-poll", [], $body) ?? [];
+    }
+
+    /**
      * Star or unstar a message. Best-effort on whatsapp-web.js, which silently ignores a message
      * it will not star.
      *

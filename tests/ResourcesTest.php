@@ -256,6 +256,18 @@ class ResourcesTest extends TestCase
         $this->assertSame(['video' => ['url' => 'http://vid'], 'recipients' => ['a@c.us']], $backend->lastCall()['body']);
     }
 
+    public function testMessageMediaReturnsArchivedBytes(): void
+    {
+        $backend = (new MockBackend())->onRaw(200, 'PNG_BYTES', ['Content-Type' => 'image/png']);
+        $client = $backend->makeClient();
+        $media = $client->messages->media('s', 'c1', 'm1');
+        $call = $backend->lastCall();
+        $this->assertSame('GET', $call['method']);
+        $this->assertSame('/api/sessions/s/messages/c1/m1/media', $call['path']);
+        $this->assertSame('PNG_BYTES', $media['data']);
+        $this->assertSame('image/png', $media['contentType']);
+    }
+
     public function testStatusMediaReturnsStoredBytes(): void
     {
         $backend = (new MockBackend())->onRaw(200, 'PNG_BYTES', ['Content-Type' => 'image/png']);

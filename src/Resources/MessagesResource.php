@@ -163,6 +163,16 @@ class MessagesResource
         return $this->http->request('GET', "/api/sessions/{$this->http->encodeSegment($sessionId)}/messages/{$this->http->encodeSegment($chatId)}/{$this->http->encodeSegment($messageId)}/reactions") ?? [];
     }
 
+    /**
+     * Fetch a message's archived media bytes (404 when nothing is archived for it).
+     *
+     * @return array{data: string, contentType: ?string}
+     */
+    public function media(string $sessionId, string $chatId, string $messageId): array
+    {
+        return $this->http->requestBinary('GET', "/api/sessions/{$this->http->encodeSegment($sessionId)}/messages/{$this->http->encodeSegment($chatId)}/{$this->http->encodeSegment($messageId)}/media");
+    }
+
     /** @return array<string,mixed> */
     public function sendBulk(string $sessionId, array $body): array
     {

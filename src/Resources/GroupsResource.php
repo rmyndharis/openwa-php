@@ -122,6 +122,37 @@ class GroupsResource
         return $this->http->request('POST', "/api/sessions/{$this->http->encodeSegment($sessionId)}/groups/{$this->http->encodeSegment($groupId)}/leave");
     }
 
+    /**
+     * Get the group's picture URL (null when it has none).
+     *
+     * @return array<string,mixed>
+     */
+    public function getPicture(string $sessionId, string $groupId): array
+    {
+        return $this->http->request('GET', "/api/sessions/{$this->http->encodeSegment($sessionId)}/groups/{$this->http->encodeSegment($groupId)}/picture") ?? [];
+    }
+
+    /**
+     * Set the group's picture. Requires admin rights on the group.
+     *
+     * @param array<string,mixed> $body url OR base64 (base64 wins), plus mimetype with base64.
+     * @return array<string,mixed>
+     */
+    public function setPicture(string $sessionId, string $groupId, array $body): array
+    {
+        return $this->http->request('PUT', "/api/sessions/{$this->http->encodeSegment($sessionId)}/groups/{$this->http->encodeSegment($groupId)}/picture", [], $body) ?? [];
+    }
+
+    /**
+     * Remove the group's picture. Requires admin rights on the group.
+     *
+     * @return array<string,mixed>
+     */
+    public function deletePicture(string $sessionId, string $groupId): array
+    {
+        return $this->http->request('DELETE', "/api/sessions/{$this->http->encodeSegment($sessionId)}/groups/{$this->http->encodeSegment($groupId)}/picture") ?? [];
+    }
+
     /** @return array<string,mixed> */
     public function inviteCode(string $sessionId, string $groupId): array
     {

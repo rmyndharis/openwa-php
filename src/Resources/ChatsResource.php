@@ -45,6 +45,18 @@ class ChatsResource
         return $this->http->request('POST', "/api/sessions/{$this->http->encodeSegment($sessionId)}/chats/unread", [], $body);
     }
 
+    /**
+     * Archive or unarchive a chat. A false `success` means the engine declined — on Baileys a chat
+     * with no known history cannot be archived.
+     *
+     * @param array<string,mixed> $body chatId and archive (bool).
+     * @return array<string,mixed>
+     */
+    public function archive(string $sessionId, array $body): array
+    {
+        return $this->http->request('POST', "/api/sessions/{$this->http->encodeSegment($sessionId)}/chats/archive", [], $body) ?? [];
+    }
+
     /** @return array<string,mixed> */
     public function delete(string $sessionId, array $body): array
     {

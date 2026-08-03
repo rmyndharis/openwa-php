@@ -238,6 +238,16 @@ class ResourcesTest extends TestCase
         $this->assertStringContainsString('/chats/typing', $backend->calls()[4]['url']);
     }
 
+    public function testChatsArchive(): void
+    {
+        $backend = new MockBackend();
+        $backend->on(200, ['success' => true]);
+        $client = $backend->makeClient();
+        $client->chats->archive('s', ['chatId' => 'a@c.us', 'archive' => true]);
+        $this->assertSame('/api/sessions/s/chats/archive', $backend->lastCall()['path']);
+        $this->assertSame('POST', $backend->lastCall()['method']);
+    }
+
     // ── Status (Stories) ──────────────────────────────────────────────
 
     public function testStatusSendForwardsRequiredRecipientsAndNestedMedia(): void

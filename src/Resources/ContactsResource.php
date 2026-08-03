@@ -74,6 +74,27 @@ class ContactsResource
         return $this->http->request('POST', "/api/sessions/{$this->http->encodeSegment($sessionId)}/contacts/{$this->http->encodeSegment($contactId)}/block");
     }
 
+    /**
+     * Save a contact to the addressbook, or edit an existing entry. Requires an OPERATOR key.
+     *
+     * @param array<string,mixed> $body firstName and an optional lastName.
+     * @return array<string,mixed>
+     */
+    public function upsert(string $sessionId, string $contactId, array $body): array
+    {
+        return $this->http->request('PUT', "/api/sessions/{$this->http->encodeSegment($sessionId)}/contacts/{$this->http->encodeSegment($contactId)}", [], $body) ?? [];
+    }
+
+    /**
+     * Remove a contact from the addressbook. Requires an OPERATOR key.
+     *
+     * @return array<string,mixed>
+     */
+    public function delete(string $sessionId, string $contactId): array
+    {
+        return $this->http->request('DELETE', "/api/sessions/{$this->http->encodeSegment($sessionId)}/contacts/{$this->http->encodeSegment($contactId)}") ?? [];
+    }
+
     /** @return array<string,mixed> */
     public function unblock(string $sessionId, string $contactId): array
     {

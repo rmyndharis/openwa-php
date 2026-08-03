@@ -248,6 +248,19 @@ class ResourcesTest extends TestCase
         $this->assertSame('/api/sessions/s/chats/a@c.us/messages', $backend->lastCall()['path']);
     }
 
+    public function testContactsAddressbook(): void
+    {
+        $backend = new MockBackend();
+        $backend->on(200, ['success' => true]);
+        $backend->on(200, ['success' => true]);
+        $client = $backend->makeClient();
+        $client->contacts->upsert('s', 'a@c.us', ['firstName' => 'Ada']);
+        $this->assertSame('PUT', $backend->lastCall()['method']);
+        $this->assertSame('/api/sessions/s/contacts/a@c.us', $backend->lastCall()['path']);
+        $client->contacts->delete('s', 'a@c.us');
+        $this->assertSame('DELETE', $backend->lastCall()['method']);
+    }
+
     public function testChatsArchive(): void
     {
         $backend = new MockBackend();

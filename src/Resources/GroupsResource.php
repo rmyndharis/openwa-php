@@ -104,8 +104,9 @@ class GroupsResource
 
     /**
      * Update group settings. At least one of {announce, locked,
-     * ephemeralSeconds} is required (400 otherwise); ephemeralSeconds responds
-     * 501 on engines without disappearing-message support (whatsapp-web.js).
+     * ephemeralSeconds, memberAddMode} is required (400 otherwise);
+     * ephemeralSeconds responds 501 on engines without disappearing-message
+     * support (whatsapp-web.js). memberAddMode is 'all' or 'admins'.
      *
      * @param array<string,mixed> $settings
      * @return array<string,mixed>

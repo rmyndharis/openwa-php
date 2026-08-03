@@ -33,6 +33,43 @@ class LabelsResource
         return $this->http->request('GET', "/api/sessions/{$this->http->encodeSegment($sessionId)}/labels/{$this->http->encodeSegment($labelId)}");
     }
 
+    /**
+     * Every chat carrying a label. whatsapp-web.js only — Baileys has label writes but no label
+     * query of any kind, and answers 501.
+     *
+     * @return array<int,array<string,mixed>>
+     */
+    public function chats(string $sessionId, string $labelId): array
+    {
+        return $this->http->request('GET', "/api/sessions/{$this->http->encodeSegment($sessionId)}/labels/{$this->http->encodeSegment($labelId)}/chats") ?? [];
+    }
+
+    /**
+     * Create or update a label. Baileys only; whatsapp-web.js answers 501.
+     *
+     * PUT rather than POST because you choose the id: WhatsApp carries one write keyed on it, so
+     * whether this creates or updates depends purely on whether that id already exists. Pick an
+     * unused id to create — reusing one rewrites that label rather than failing. Omitted fields are
+     * left alone.
+     *
+     * @param array<string,mixed> $body
+     * @return array<string,mixed>
+     */
+    public function upsert(string $sessionId, string $labelId, array $body): array
+    {
+        return $this->http->request('PUT', "/api/sessions/{$this->http->encodeSegment($sessionId)}/labels/{$this->http->encodeSegment($labelId)}", [], $body);
+    }
+
+    /**
+     * Delete a label; it disappears from every chat it was on. Baileys only.
+     *
+     * @return array<string,mixed>
+     */
+    public function delete(string $sessionId, string $labelId): array
+    {
+        return $this->http->request('DELETE', "/api/sessions/{$this->http->encodeSegment($sessionId)}/labels/{$this->http->encodeSegment($labelId)}");
+    }
+
     /** @return array<int,array<string,mixed>> */
     public function forChat(string $sessionId, string $chatId): array
     {

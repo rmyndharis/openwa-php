@@ -45,6 +45,18 @@ class GroupsResource
     }
 
     /**
+     * Preview a group from its invite code, WITHOUT joining. Read-only, so it is safe to call on a
+     * code from an untrusted source. There is no participant list — the account is not a member —
+     * only a count, and only when WhatsApp discloses one.
+     *
+     * @return array<string,mixed>
+     */
+    public function joinInfo(string $sessionId, string $code): array
+    {
+        return $this->http->request('GET', "/api/sessions/{$this->http->encodeSegment($sessionId)}/groups/join-info", ['code' => $code]);
+    }
+
+    /**
      * Join a group via an invite code (the token from a chat.whatsapp.com/<code>
      * link). Returns {success: true, groupId}.
      *

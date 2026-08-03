@@ -256,6 +256,16 @@ class ResourcesTest extends TestCase
         $this->assertSame(['video' => ['url' => 'http://vid'], 'recipients' => ['a@c.us']], $backend->lastCall()['body']);
     }
 
+    public function testStarPostsTheBooleanThrough(): void
+    {
+        $backend = new MockBackend();
+        $backend->on(200, ['success' => true]);
+        $client = $backend->makeClient();
+        $client->messages->star('s', ['chatId' => 'c1', 'messageId' => 'm1', 'star' => false]);
+        $this->assertSame('/api/sessions/s/messages/star', $backend->lastCall()['path']);
+        $this->assertSame('POST', $backend->lastCall()['method']);
+    }
+
     public function testPinAndUnpinPostToTheirRoutes(): void
     {
         $backend = new MockBackend();

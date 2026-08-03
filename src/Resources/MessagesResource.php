@@ -176,6 +176,18 @@ class MessagesResource
     }
 
     /**
+     * Star or unstar a message. Best-effort on whatsapp-web.js, which silently ignores a message
+     * it will not star.
+     *
+     * @param array<string,mixed> $body chatId, messageId and star (bool).
+     * @return array<string,mixed>
+     */
+    public function star(string $sessionId, array $body): array
+    {
+        return $this->http->request('POST', "/api/sessions/{$this->http->encodeSegment($sessionId)}/messages/star", [], $body) ?? [];
+    }
+
+    /**
      * @param array<string,mixed> $body
      * @return array<string,mixed>
      */

@@ -164,6 +164,27 @@ class MessagesResource
     }
 
     /**
+     * Pin a message in its chat.
+     *
+     * @param array<string,mixed> $body chatId, messageId and an optional durationSeconds of
+     *                                   86400 (24h), 604800 (7d) or 2592000 (30d); defaults to 24h.
+     * @return array<string,mixed>
+     */
+    public function pin(string $sessionId, array $body): array
+    {
+        return $this->http->request('POST', "/api/sessions/{$this->http->encodeSegment($sessionId)}/messages/pin", [], $body) ?? [];
+    }
+
+    /**
+     * @param array<string,mixed> $body
+     * @return array<string,mixed>
+     */
+    public function unpin(string $sessionId, array $body): array
+    {
+        return $this->http->request('POST', "/api/sessions/{$this->http->encodeSegment($sessionId)}/messages/unpin", [], $body) ?? [];
+    }
+
+    /**
      * Fetch a message's archived media bytes (404 when nothing is archived for it).
      *
      * @return array{data: string, contentType: ?string}

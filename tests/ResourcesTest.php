@@ -256,6 +256,20 @@ class ResourcesTest extends TestCase
         $this->assertSame(['video' => ['url' => 'http://vid'], 'recipients' => ['a@c.us']], $backend->lastCall()['body']);
     }
 
+    public function testPinAndUnpinPostToTheirRoutes(): void
+    {
+        $backend = new MockBackend();
+        // Queue responses in CALL order: pin, unpin.
+        $backend->on(200, ['success' => true]);
+        $backend->on(200, ['success' => true]);
+        $client = $backend->makeClient();
+        $client->messages->pin('s', ['chatId' => 'c1', 'messageId' => 'm1', 'durationSeconds' => 604800]);
+        $this->assertSame('/api/sessions/s/messages/pin', $backend->lastCall()['path']);
+        $this->assertSame('POST', $backend->lastCall()['method']);
+        $client->messages->unpin('s', ['chatId' => 'c1', 'messageId' => 'm1']);
+        $this->assertSame('/api/sessions/s/messages/unpin', $backend->lastCall()['path']);
+    }
+
     public function testMessageMediaReturnsArchivedBytes(): void
     {
         $backend = (new MockBackend())->onRaw(200, 'PNG_BYTES', ['Content-Type' => 'image/png']);

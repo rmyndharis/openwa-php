@@ -46,6 +46,16 @@ class ChatsResource
     }
 
     /**
+     * Delete every message in a chat, keeping the chat itself.
+     *
+     * @return array<string,mixed>
+     */
+    public function clearMessages(string $sessionId, string $chatId): array
+    {
+        return $this->http->request('DELETE', "/api/sessions/{$this->http->encodeSegment($sessionId)}/chats/{$this->http->encodeSegment($chatId)}/messages") ?? [];
+    }
+
+    /**
      * Archive or unarchive a chat. A false `success` means the engine declined — on Baileys a chat
      * with no known history cannot be archived.
      *

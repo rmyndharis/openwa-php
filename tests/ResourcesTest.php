@@ -238,6 +238,16 @@ class ResourcesTest extends TestCase
         $this->assertStringContainsString('/chats/typing', $backend->calls()[4]['url']);
     }
 
+    public function testChatsClearMessages(): void
+    {
+        $backend = new MockBackend();
+        $backend->on(200, ['success' => true]);
+        $client = $backend->makeClient();
+        $client->chats->clearMessages('s', 'a@c.us');
+        $this->assertSame('DELETE', $backend->lastCall()['method']);
+        $this->assertSame('/api/sessions/s/chats/a@c.us/messages', $backend->lastCall()['path']);
+    }
+
     public function testChatsArchive(): void
     {
         $backend = new MockBackend();

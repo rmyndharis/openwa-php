@@ -9,6 +9,7 @@ use OpenWA\Exceptions\OpenWAException;
 use OpenWA\Http\HttpExecutor;
 use OpenWA\Resources\CatalogResource;
 use OpenWA\Resources\CallsResource;
+use OpenWA\Resources\MediaResource;
 use OpenWA\Resources\ChannelsResource;
 use OpenWA\Resources\ChatsResource;
 use OpenWA\Resources\ContactsResource;
@@ -67,6 +68,7 @@ class Client
     public TemplatesResource $templates;
     public ProfileResource $profile;
     public CallsResource $calls;
+    public MediaResource $media;
 
     /**
      * @param array{
@@ -113,6 +115,7 @@ class Client
         $this->templates = new TemplatesResource($this->http);
         $this->profile = new ProfileResource($this->http);
         $this->calls = new CallsResource($this->http);
+        $this->media = new MediaResource($this->http);
     }
 
     /**

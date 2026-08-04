@@ -76,6 +76,20 @@ class StatusResource
         return $this->http->request('POST', "/api/sessions/{$this->http->encodeSegment($sessionId)}/status/send-video", [], $body);
     }
 
+    /**
+     * Post an audio status as a voice note (OPERATOR). The body takes an `audio` wrapper and an
+     * optional `recipients` list; it carries no caption, since WhatsApp has nowhere to render one
+     * on a status voice note. WhatsApp plays one only as Ogg/Opus and neither engine transcodes —
+     * convert first via MediaResource::convertVoice.
+     *
+     * @param array<string,mixed> $body
+     * @return array<string,mixed>
+     */
+    public function sendVoice(string $sessionId, array $body): array
+    {
+        return $this->http->request('POST', "/api/sessions/{$this->http->encodeSegment($sessionId)}/status/send-voice", [], $body);
+    }
+
     public function delete(string $sessionId, string $statusId): void
     {
         $this->http->request('DELETE', "/api/sessions/{$this->http->encodeSegment($sessionId)}/status/{$this->http->encodeSegment($statusId)}");

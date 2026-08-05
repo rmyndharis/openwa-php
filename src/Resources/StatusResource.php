@@ -78,8 +78,8 @@ class StatusResource
 
     /**
      * Post an audio status as a voice note (OPERATOR). The body takes an `audio` wrapper and an
-     * optional `recipients` list; it carries no caption, since WhatsApp has nowhere to render one
-     * on a status voice note. WhatsApp plays one only as Ogg/Opus and neither engine transcodes —
+     * optional `recipients` list and an optional `backgroundColor` (#RRGGBB, Baileys only); it
+     * carries no caption, since WhatsApp has nowhere to render one on a status voice note. WhatsApp plays one only as Ogg/Opus and neither engine transcodes —
      * convert first via MediaResource::convertVoice.
      *
      * @param array<string,mixed> $body

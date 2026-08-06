@@ -75,6 +75,47 @@ try {
 - Escape hatch for endpoints the SDK does not wrap:
   `$client->request($method, $path, $query, $body)`.
 
+## Releasing
+
+Packagist installs this SDK from the mirror repository
+[`rmyndharis/openwa-php`](https://github.com/rmyndharis/openwa-php), not from the
+monorepo — Composer needs `composer.json` at a repository root and does not
+support subdirectories. Two workflows keep that mirror correct:
+
+- [`split-php-sdk.yml`](../../.github/workflows/split-php-sdk.yml) syncs the
+  mirror's `main` on every push that touches `sdk/php/**`, which is what
+  Packagist's `dev-main` follows.
+- [`php-sdk-release.yml`](../../.github/workflows/php-sdk-release.yml) cuts a
+  versioned release by pushing a **tag** to the mirror. Packagist derives
+  versions from that repository's tags, so a tag in this monorepo alone
+  publishes nothing.
+
+There is no `version` field in `composer.json`, and there should not be —
+Composer takes the version from the tag, and a hardcoded field drifts. **The tag
+is the version.**
+
+Cutting a release:
+
+1. If the minor line changes, update `extra.branch-alias.dev-main` in
+   `composer.json` (e.g. `0.1.x-dev` → `0.2.x-dev`) and land it on `main`. The
+   release workflow refuses to publish when the alias does not match the tag.
+2. Tag that commit `php-sdk-v<version>` (e.g. `php-sdk-v0.2.0`) and push the
+   tag. The SDK has its own version line — the monorepo's `v*` tags are the app
+   version and never trigger an SDK release.
+3. The workflow runs the test suite, then tags the mirror `<version>` (no `v`
+   prefix, matching the existing tags there). Packagist picks it up from its
+   GitHub hook within a minute or two.
+
+> **A released version is effectively immutable.** Packagist caches a tag's
+> contents, so moving one does not reliably reach anyone who already resolved
+> it. The workflow refuses to overwrite an existing mirror tag — bump the
+> version instead of re-tagging.
+
+Requires the `PHP_SDK_SPLIT_TOKEN` secret, the same one the mirror workflow
+uses. Unlike the mirror workflow, which skips with a notice when the token is
+absent, the release **fails**: a release that silently publishes nothing looks
+exactly like one that worked.
+
 ## License
 
 MIT

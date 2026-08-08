@@ -53,7 +53,8 @@ $client = new Client([
 A non-2xx response throws a typed `OpenWA\Exceptions\OpenWAApiException` subclass —
 `OpenWAAuthException` (401), `OpenWAForbiddenException` (403), `OpenWANotFoundException` (404),
 `OpenWAConflictException` (409), `OpenWARateLimitException` (429),
-`OpenWANotImplementedException` (501) — each exposing `getStatus()` and the parsed `getBody()`.
+`OpenWANotImplementedException` (501), `OpenWAServiceUnavailableException` (503 — the only
+retryable one) — each exposing `getStatus()` and the parsed `getBody()`.
 A timeout throws `OpenWATimeoutException`.
 
 ```php

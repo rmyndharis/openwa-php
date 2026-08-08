@@ -20,10 +20,14 @@ class SessionsResource
         $this->http = $http;
     }
 
-    /** @return array<int,array<string,mixed>> */
-    public function list(): array
+    /**
+     * @param array<string,mixed> $query Optional pagination: `limit`, `offset`.
+     *
+     * @return array<int,array<string,mixed>>
+     */
+    public function list(array $query = []): array
     {
-        return $this->http->request('GET', '/api/sessions') ?? [];
+        return $this->http->request('GET', '/api/sessions', $query) ?? [];
     }
 
     /** @return array<string,mixed> */

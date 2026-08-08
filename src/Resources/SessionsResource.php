@@ -30,6 +30,29 @@ class SessionsResource
         return $this->http->request('GET', '/api/sessions', $query) ?? [];
     }
 
+    /**
+     * Read a session's effective configuration.
+     *
+     * @return array<string,mixed>
+     */
+    public function getConfig(string $id): array
+    {
+        return $this->http->request('GET', "/api/sessions/{$this->http->encodeSegment($id)}/config");
+    }
+
+    /**
+     * Update a RUNNING session's configuration — no re-link and no QR scan. All three fields were
+     * fixed at creation before this route existed.
+     *
+     * @param array<string,mixed> $body autoRejectCalls, maxReconnectAttempts, reconnectBaseDelay
+     *
+     * @return array<string,mixed>
+     */
+    public function updateConfig(string $id, array $body): array
+    {
+        return $this->http->request('PATCH', "/api/sessions/{$this->http->encodeSegment($id)}/config", [], $body);
+    }
+
     /** @return array<string,mixed> */
     public function get(string $id): array
     {

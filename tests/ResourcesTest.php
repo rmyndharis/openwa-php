@@ -174,6 +174,19 @@ class ResourcesTest extends TestCase
         $this->assertSame('DELETE', $backend->calls()[1]['method']);
     }
 
+    public function testListBlockedGetsSessionWideRoute(): void
+    {
+        $backend = (new MockBackend())->on(200, ['a@c.us', 'b@c.us']);
+        $client = $backend->makeClient();
+        $res = $client->contacts->listBlocked('s');
+        $call = $backend->lastCall();
+        $this->assertSame('GET', $call['method']);
+        // Session-wide: no contact id in the path, and not the /contacts list route.
+        $this->assertSame('/api/sessions/s/contacts/blocked', $call['path']);
+        $this->assertNull($call['body']);
+        $this->assertSame(['a@c.us', 'b@c.us'], $res);
+    }
+
     public function testProfilePicturesBatchResolvesIdsQuery(): void
     {
         $backend = (new MockBackend())->on(200, ['pictures' => ['a@c.us' => 'http://p/a', 'b@c.us' => null]]);

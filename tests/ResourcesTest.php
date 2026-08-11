@@ -443,4 +443,16 @@ class ResourcesTest extends TestCase
         $this->assertSame([], $backend->lastCall()['body']);
     }
 
+    public function testCreateCallLink(): void
+    {
+        $backend = new MockBackend();
+        $backend->on(200, ['link' => 'https://call.whatsapp.com/video/AbC']);
+        $client = $backend->makeClient();
+        $res = $client->calls->createLink('s', ['type' => 'video', 'startTime' => 1800000000000]);
+        $this->assertSame('POST', $backend->lastCall()['method']);
+        $this->assertStringEndsWith('/sessions/s/calls/link', $backend->lastCall()['url']);
+        $this->assertSame(['type' => 'video', 'startTime' => 1800000000000], $backend->lastCall()['body']);
+        $this->assertStringContainsString('call.whatsapp.com', $res['link']);
+    }
+
 }

@@ -55,6 +55,18 @@ class ResourcesTest extends TestCase
         $this->assertStringContainsString('/sessions/stats/overview', $backend->lastCall()['url']);
     }
 
+    public function testSetOnlinePresence(): void
+    {
+        $backend = new MockBackend();
+        $backend->on(200, ['success' => true]);
+        $client = $backend->makeClient();
+        $client->sessions->setOnlinePresence('s1', ['available' => false]);
+        // The account's own presence: no chat id in the path and no /subscribe suffix.
+        $this->assertSame('PUT', $backend->lastCall()['method']);
+        $this->assertStringEndsWith('/sessions/s1/presence', $backend->lastCall()['url']);
+        $this->assertSame(['available' => false], $backend->lastCall()['body']);
+    }
+
     // ── Groups ────────────────────────────────────────────────────────
 
     public function testGroupListGetCreate(): void

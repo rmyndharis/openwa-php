@@ -130,4 +130,20 @@ class SessionsResource
     {
         return $this->http->request('GET', '/api/sessions/stats/overview');
     }
+
+    /**
+     * Set the account's own global presence — appear online, or offline.
+     *
+     * `available: false` hands notifications back to the phone: a linked device that stays online
+     * suppresses the phone's own alerts. This is the ACCOUNT's presence, not a chat's — see
+     * ChatsResource for per-chat typing/recording states.
+     *
+     * @param array{available:bool} $body
+     * @return array<string,mixed>
+     */
+    public function setOnlinePresence(string $id, array $body): array
+    {
+        return $this->http->request('PUT', "/api/sessions/{$this->http->encodeSegment($id)}/presence", [], $body);
+    }
+
 }

@@ -311,6 +311,48 @@ class ResourcesTest extends TestCase
         $this->assertSame('POST', $backend->lastCall()['method']);
     }
 
+    public function testChatsPinPostsTheFlag(): void
+    {
+        $backend = new MockBackend();
+        $backend->on(200, ['success' => true]);
+        $client = $backend->makeClient();
+        $client->chats->pin('s', ['chatId' => 'a@c.us', 'pin' => true]);
+        $this->assertSame('/api/sessions/s/chats/pin', $backend->lastCall()['path']);
+        $this->assertSame('POST', $backend->lastCall()['method']);
+        $this->assertSame(['chatId' => 'a@c.us', 'pin' => true], $backend->lastCall()['body']);
+    }
+
+    public function testChatsPinReportsRefusalRatherThanThrowing(): void
+    {
+        $backend = new MockBackend();
+        $backend->on(200, ['success' => false]);
+        $client = $backend->makeClient();
+        $this->assertSame(['success' => false], $client->chats->pin('s', ['chatId' => 'a@c.us', 'pin' => true]));
+    }
+
+    public function testChatsMuteSendsEpochMillisecondsUnchanged(): void
+    {
+        // The value must arrive as the exact millisecond number given. A client that divided by 1000
+        // would still get a 200 back; the wrong unit is only visible on the wire.
+        $backend = new MockBackend();
+        $backend->on(200, ['success' => true]);
+        $client = $backend->makeClient();
+        $client->chats->mute('s', ['chatId' => 'a@c.us', 'muteUntil' => 1893456000000]);
+        $this->assertSame('/api/sessions/s/chats/mute', $backend->lastCall()['path']);
+        $this->assertSame(['chatId' => 'a@c.us', 'muteUntil' => 1893456000000], $backend->lastCall()['body']);
+    }
+
+    public function testChatsMuteSendsExplicitNullToUnmute(): void
+    {
+        // null is the unmute signal and is NOT the same as omitting the key, which the route rejects.
+        $backend = new MockBackend();
+        $backend->on(200, ['success' => true]);
+        $client = $backend->makeClient();
+        $client->chats->mute('s', ['chatId' => 'a@c.us', 'muteUntil' => null]);
+        $this->assertArrayHasKey('muteUntil', $backend->lastCall()['body']);
+        $this->assertNull($backend->lastCall()['body']['muteUntil']);
+    }
+
     // ── Status (Stories) ──────────────────────────────────────────────
 
     public function testStatusSendForwardsRequiredRecipientsAndNestedMedia(): void

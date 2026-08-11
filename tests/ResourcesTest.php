@@ -406,4 +406,28 @@ class ResourcesTest extends TestCase
         $this->assertSame('POST', $backend->calls()[3]['method']);
         $this->assertStringContainsString('/auth/validate', $backend->calls()[3]['url']);
     }
+
+    public function testGroupMembershipRequests(): void
+    {
+        $backend = new MockBackend();
+        $backend->on(200, [['participantId' => 'a@c.us', 'method' => 'invite_link']]);
+        $backend->on(200, ['success' => true, 'message' => 'ok', 'results' => []]);
+        $backend->on(200, ['success' => true, 'message' => 'ok', 'results' => []]);
+        $client = $backend->makeClient();
+
+        $pending = $client->groups->getMembershipRequests('s', 'g1@g.us');
+        $this->assertSame('GET', $backend->lastCall()['method']);
+        $this->assertStringEndsWith('/groups/g1@g.us/membership-requests', $backend->lastCall()['url']);
+        $this->assertSame('a@c.us', $pending[0]['participantId']);
+
+        $client->groups->approveMembershipRequests('s', 'g1@g.us', ['a@c.us']);
+        $this->assertStringEndsWith('/membership-requests/approve', $backend->lastCall()['url']);
+        $this->assertSame(['participants' => ['a@c.us']], $backend->lastCall()['body']);
+
+        // Omitting the list means "every pending request": an empty body, not a null participants key.
+        $client->groups->rejectMembershipRequests('s', 'g1@g.us');
+        $this->assertStringEndsWith('/membership-requests/reject', $backend->lastCall()['url']);
+        $this->assertSame([], $backend->lastCall()['body']);
+    }
+
 }

@@ -109,6 +109,47 @@ class MessagesTest extends TestCase
         $this->assertStringContainsString('/messages/delete', $backend->calls()[3]['url']);
     }
 
+    /**
+     * This client takes an untyped array, so nothing here checks the shape at compile time — the
+     * body assertion is the only thing standing between a caller and a silently dropped key.
+     */
+    public function testQuotedMessageIdReachesTheBodyOnEverySend(): void
+    {
+        $backend = new MockBackend();
+        foreach (range(1, 5) as $ignored) {
+            $backend->on(201, ['messageId' => 'm', 'timestamp' => 1]);
+        }
+        $client = $backend->makeClient();
+
+        $client->messages->sendText('s', ['chatId' => 'a@c.us', 'text' => 'hi', 'quotedMessageId' => 'q1']);
+        $client->messages->sendImage('s', ['chatId' => 'a@c.us', 'url' => 'http://u', 'quotedMessageId' => 'q1']);
+        $client->messages->sendLocation(
+            's',
+            ['chatId' => 'a@c.us', 'latitude' => 1, 'longitude' => 2, 'quotedMessageId' => 'q1']
+        );
+        $client->messages->sendContact(
+            's',
+            ['chatId' => 'a@c.us', 'contactName' => 'A', 'contactNumber' => '628', 'quotedMessageId' => 'q1']
+        );
+        $client->messages->sendPoll(
+            's',
+            ['chatId' => 'a@c.us', 'name' => 'Q', 'options' => ['a', 'b'], 'quotedMessageId' => 'q1']
+        );
+
+        foreach ($backend->calls() as $call) {
+            $this->assertSame('q1', $call['body']['quotedMessageId'] ?? null, $call['url']);
+        }
+    }
+
+    public function testOrdinarySendCarriesNoQuoteKey(): void
+    {
+        $backend = new MockBackend();
+        $backend->on(201, ['messageId' => 'm', 'timestamp' => 1]);
+        $backend->makeClient()->messages->sendImage('s', ['chatId' => 'a@c.us', 'url' => 'http://u']);
+
+        $this->assertArrayNotHasKey('quotedMessageId', $backend->lastCall()['body']);
+    }
+
     public function testEditMessageUsesEditPath(): void
     {
         $backend = (new MockBackend())->on(200, ['messageId' => 'm1', 'timestamp' => 123]);

@@ -79,7 +79,16 @@ class SessionsResource
         return $this->http->request('POST', "/api/sessions/{$this->http->encodeSegment($id)}/start");
     }
 
-    /** @return array<string,mixed> */
+    /**
+     * Stop a session and disconnect gracefully. Throws on HTTP 502 with
+     * `code: 'SESSION_STOP_INCOMPLETE'` when the session was stopped locally but the engine
+     * teardown did not complete (the graceful disconnect and the force-destroy escalation both
+     * failed, so the engine process may still be running); the status is settled to
+     * `disconnected` and no success audit is written. Retry the stop; restart the node to reap
+     * a leaked process.
+     *
+     * @return array<string,mixed>
+     */
     public function stop(string $id): array
     {
         return $this->http->request('POST', "/api/sessions/{$this->http->encodeSegment($id)}/stop");

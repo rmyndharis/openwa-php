@@ -7,12 +7,12 @@ namespace OpenWA\Resources;
 use OpenWA\Http\HttpExecutor;
 
 /**
- * Catalog resource — WhatsApp Business catalog, products, and product/catalog sends.
+ * Catalog resource — WhatsApp Business catalog, products, and product sends.
  *
  * Backed by src/modules/catalog/catalog.controller.ts (@Controller('sessions/:sessionId')).
  * NOTE: the catalog controller is mounted under the session root, so catalog
- * reads are /catalog... while product/catalog SENDS share the messages namespace
- * (/messages/send-product, /messages/send-catalog).
+ * reads are /catalog... while product sends share the messages namespace
+ * (/messages/send-product).
  */
 class CatalogResource
 {
@@ -58,16 +58,5 @@ class CatalogResource
     public function sendProduct(string $sessionId, array $body): array
     {
         return $this->http->request('POST', "/api/sessions/{$this->http->encodeSegment($sessionId)}/messages/send-product", [], $body);
-    }
-
-    /**
-     * Send a catalog link message. Requires an OPERATOR-level key. Shares the messages path.
-     *
-     * @param array<string,mixed> $body  chatId required; body optional.
-     * @return array<string,mixed>
-     */
-    public function sendCatalog(string $sessionId, array $body): array
-    {
-        return $this->http->request('POST', "/api/sessions/{$this->http->encodeSegment($sessionId)}/messages/send-catalog", [], $body);
     }
 }

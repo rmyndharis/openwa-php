@@ -57,7 +57,6 @@ class LabelsChannelsCatalogTest extends TestCase
         $backend->on(200, [['id' => 'p1', 'name' => 'Widget']]);
         $backend->on(200, ['id' => 'p1', 'name' => 'Widget']);
         $backend->on(201, ['messageId' => 'm', 'timestamp' => 1]);
-        $backend->on(201, ['messageId' => 'm', 'timestamp' => 1]);
         $client = $backend->makeClient();
         $client->catalog->info('s');
         $this->assertStringContainsString('/sessions/s/catalog', $backend->calls()[0]['path']);
@@ -67,8 +66,6 @@ class LabelsChannelsCatalogTest extends TestCase
         $client->catalog->sendProduct('s', ['chatId' => 'a@c.us', 'productId' => 'p1', 'body' => 'x']);
         $this->assertStringContainsString('/messages/send-product', $backend->calls()[3]['path']);
         $this->assertSame(['chatId' => 'a@c.us', 'productId' => 'p1', 'body' => 'x'], $backend->calls()[3]['body']);
-        $client->catalog->sendCatalog('s', ['chatId' => 'a@c.us', 'body' => 'cat']);
-        $this->assertStringContainsString('/messages/send-catalog', $backend->calls()[4]['path']);
     }
 
     public function testClientExposesAll11Resources(): void

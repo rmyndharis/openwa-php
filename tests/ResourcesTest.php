@@ -223,6 +223,41 @@ class ResourcesTest extends TestCase
         $this->assertStringContainsString('/webhooks/w1/test', $backend->calls()[5]['url']);
     }
 
+    public function testEmptyMapFieldsEncodeAsJsonObjectNotJsonList(): void
+    {
+        // headers (webhook create/update) and vars (send-template) are map-typed on the wire; an
+        // empty PHP array would serialize as a JSON list [] and the gateway's object validation
+        // rejects it. The SDK must cast the empty map so it encodes as {}.
+        $backend = (new MockBackend())->on(201, ['id' => 'w1']);
+        $client = $backend->makeClient();
+
+        $client->webhooks->create('s', ['url' => 'u', 'events' => ['*'], 'headers' => []]);
+        $this->assertSame('{"url":"u","events":["*"],"headers":{}}', $backend->rawBody(0));
+
+        $backend->on(200, ['id' => 'w1']);
+        $client->webhooks->update('s', 'w1', ['active' => true, 'headers' => []]);
+        $this->assertSame('{"active":true,"headers":{}}', $backend->rawBody(1));
+
+        $backend->on(200, ['id' => 'm1']);
+        $client->messages->sendTemplate('s', ['chatId' => 'c', 'templateName' => 't', 'vars' => []]);
+        $this->assertSame('{"chatId":"c","templateName":"t","vars":{}}', $backend->rawBody(2));
+    }
+
+    public function testBulkItemsEncodeEmptyVariablesAsJsonObject(): void
+    {
+        $backend = (new MockBackend())->on(200, ['id' => 'b1']);
+        $client = $backend->makeClient();
+
+        $client->messages->sendBulk('s', ['messages' => [
+            ['chatId' => 'c1', 'type' => 'template', 'templateName' => 't', 'variables' => []],
+            ['chatId' => 'c2', 'type' => 'template', 'templateName' => 't', 'variables' => ['x' => 'y']],
+        ]]);
+        $this->assertSame(
+            '{"messages":[{"chatId":"c1","type":"template","templateName":"t","variables":{}},{"chatId":"c2","type":"template","templateName":"t","variables":{"x":"y"}}]}',
+            $backend->rawBody(0)
+        );
+    }
+
     public function testWebhookCreateForwardsPolymorphicFilterValuesVerbatim(): void
     {
         $backend = (new MockBackend())->on(201, ['id' => 'w1']);

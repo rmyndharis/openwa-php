@@ -81,6 +81,20 @@ class MockBackend
         ]);
     }
 
+    /**
+     * The raw request body string, for assertions that must distinguish JSON {} from []
+     * (callAt() decodes associatively, which collapses both to an empty PHP array).
+     *
+     * @return string
+     */
+    public function rawBody(int $index): string
+    {
+        if (!isset($this->recorded[$index])) {
+            return '';
+        }
+        return (string) $this->recorded[$index]->getBody();
+    }
+
     /** @return array<string,mixed> */
     public function lastCall(): array
     {

@@ -38,6 +38,16 @@ class ProfileCallsTest extends TestCase
         $this->assertSame(['base64' => 'aW1hZ2U=', 'mimetype' => 'image/jpeg'], $backend->calls()[1]['body']);
     }
 
+    public function testDeleteProfilePicture(): void
+    {
+        $backend = (new MockBackend())->on(200, ['success' => true, 'message' => 'Profile picture removed']);
+        $backend->makeClient()->profile->deleteProfilePicture('s');
+        $call = $backend->calls()[0];
+        $this->assertSame('DELETE', $call['method']);
+        $this->assertSame('/api/sessions/s/profile/picture', $call['path']);
+        $this->assertNull($call['body'] ?? null);
+    }
+
     public function testRejectCall(): void
     {
         $backend = (new MockBackend())->on(200, ['success' => true]);

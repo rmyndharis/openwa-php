@@ -52,4 +52,14 @@ class ProfileResource
     {
         return $this->http->request('PUT', "/api/sessions/{$this->http->encodeSegment($sessionId)}/profile/picture", [], $body);
     }
+
+    /**
+     * Remove the account profile picture. Requires an OPERATOR-level key.
+     *
+     * @return array<string,mixed>
+     */
+    public function deleteProfilePicture(string $sessionId): array
+    {
+        return $this->http->request('DELETE', "/api/sessions/{$this->http->encodeSegment($sessionId)}/profile/picture");
+    }
 }

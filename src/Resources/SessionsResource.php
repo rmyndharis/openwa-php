@@ -53,6 +53,28 @@ class SessionsResource
         return $this->http->request('PATCH', "/api/sessions/{$this->http->encodeSegment($id)}/config", [], $body);
     }
 
+    /**
+     * Read a session's masked proxy configuration (credentials never returned).
+     *
+     * @return array{enabled: bool, proxyType: ?string, proxyHost: ?string, hasCredentials: bool}
+     */
+    public function getProxy(string $id): array
+    {
+        return $this->http->request('GET', "/api/sessions/{$this->http->encodeSegment($id)}/proxy");
+    }
+
+    /**
+     * Update per-session proxy settings. No restart — changes apply on the next start.
+     * Send proxyUrl: null to clear. OPERATOR role required.
+     *
+     * @param array{proxyUrl?: ?string, proxyType?: ?string} $body
+     * @return array{enabled: bool, proxyType: ?string, proxyHost: ?string, hasCredentials: bool}
+     */
+    public function updateProxy(string $id, array $body): array
+    {
+        return $this->http->request('PATCH', "/api/sessions/{$this->http->encodeSegment($id)}/proxy", [], $body);
+    }
+
     /** @return array<string,mixed> */
     public function get(string $id): array
     {

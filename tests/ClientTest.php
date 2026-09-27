@@ -120,6 +120,31 @@ class ClientTest extends TestCase
         $this->assertStringContainsString('/labels/a@c.us', $backend2->lastCall()['path']); // @ preserved
     }
 
+    public function testEmptyOrDotIdsAreRefusedBeforeSending(): void
+    {
+        // The HTTP stack resolves dot segments, so such an id would otherwise reach the parent resource.
+        $backend = new MockBackend();
+        $client = $backend->makeClient();
+        $attempts = [
+            fn () => $client->webhooks->delete('s1', '..'),
+            fn () => $client->contacts->delete('s1', '.'),
+            fn () => $client->templates->delete('s1', ''),
+        ];
+        foreach ($attempts as $attempt) {
+            try {
+                $attempt();
+                $this->fail('expected InvalidArgumentException');
+            } catch (\InvalidArgumentException $e) {
+                $this->assertStringContainsString('dot path segment', $e->getMessage());
+            }
+        }
+        $this->assertSame([], $backend->calls());
+
+        $backend->on(204);
+        $client->webhooks->delete('s1', '628123@c.us');
+        $this->assertSame('/api/sessions/s1/webhooks/628123@c.us', $backend->lastCall()['path']);
+    }
+
     public function testRawRequestEscapeHatch(): void
     {
         $backend = (new MockBackend())->on(200, ['ok' => true]);

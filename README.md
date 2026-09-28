@@ -1,6 +1,6 @@
 # rmyndharis/openwa
 
-Official PHP SDK for the [OpenWA](https://github.com/rmyndharis/OpenWA) WhatsApp API Gateway.
+Official PHP SDK for [OpenWA](https://github.com/rmyndharis/OpenWA), the open-source WhatsApp API Gateway. OpenWA is an independent project, not affiliated with or endorsed by WhatsApp or Meta.
 
 A synchronous client built on [Guzzle](https://docs.guzzlephp.org/), PSR-4 autoloaded.
 

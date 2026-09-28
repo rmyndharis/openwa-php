@@ -216,6 +216,12 @@ class HttpExecutor
         $reason = $response->getReasonPhrase();
         $message = "OpenWA API {$status} {$reason} — {$method} {$path}: {$messageText}";
 
-        return OpenWAApiException::classify($status, $message, $data, $envelope['error'] ?? null);
+        return OpenWAApiException::classify(
+            $status,
+            $message,
+            $data,
+            $envelope['error'] ?? null,
+            $response->getHeaders(),
+        );
     }
 }

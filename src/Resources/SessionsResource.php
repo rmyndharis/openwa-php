@@ -41,8 +41,9 @@ class SessionsResource
     }
 
     /**
-     * Update a RUNNING session's configuration — no re-link and no QR scan. All three fields were
-     * fixed at creation before this route existed.
+     * Update a session's configuration, in any state, without a restart, re-link or QR scan (all three
+     * fields were fixed at creation before this route existed). `autoRejectCalls` applies immediately;
+     * `maxReconnectAttempts` and `reconnectBaseDelay` apply on the next start.
      *
      * @param array<string,mixed> $body autoRejectCalls, maxReconnectAttempts, reconnectBaseDelay
      *

@@ -12,6 +12,11 @@ composer require rmyndharis/openwa
 
 Requires PHP 8.1+ and Guzzle 7. The namespace is `OpenWA\`.
 
+This README describes `main`. The 0.5.0 release lacks `sessions->getProxy`,
+`sessions->updateProxy`, `messages->clickButton`, `WebhookSignature::verify` and the
+`getErrorCode()`, `getRetryAfterSeconds()` and `getHeaders()` exception methods; they ship with the
+next SDK release. See [the SDK overview](../README.md#coverage).
+
 ## Usage
 
 ```php

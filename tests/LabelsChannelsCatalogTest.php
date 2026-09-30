@@ -68,6 +68,16 @@ class LabelsChannelsCatalogTest extends TestCase
         $this->assertSame(['chatId' => 'a@c.us', 'productId' => 'p1', 'body' => 'x'], $backend->calls()[3]['body']);
     }
 
+    public function testCatalogInfoAndProductReturnNullOnAnEmptyBody(): void
+    {
+        $backend = new MockBackend();
+        $backend->on(200);
+        $backend->on(200);
+        $client = $backend->makeClient();
+        $this->assertNull($client->catalog->info('s'));
+        $this->assertNull($client->catalog->product('s', 'missing'));
+    }
+
     public function testClientExposesAll11Resources(): void
     {
         $client = (new MockBackend())->makeClient();

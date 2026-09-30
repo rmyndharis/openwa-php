@@ -63,9 +63,11 @@ so bound any retry. A 429 from the global rate limiter lifts when its window exp
 the per-second tier, up to an hour for the hourly tier by default), and `getRetryAfterSeconds()`
 carries its `Retry-After` header. A 429 whose `getErrorCode()` is `"SEND_PACING_LIMITED"` is not
 transient: do not retry it before `getRetryAfterSeconds()`, which then comes from the body and can
-be hours. `getHeaders()` returns the response headers. In a routed deployment only 503 proves the
-request was never carried out: a forward that fails after the request reached the owner node answers
-502 or 504.
+be hours. `getHeaders()` returns the response headers. A 503 does not prove a write was never
+carried out: the engine answers it when WhatsApp did not confirm in time, and the change may still
+have been applied, so re-read the state before repeating it. In a routed deployment a forward that
+fails before reaching the owner node answers 503, one that fails after the request reached it answers
+502 or 504, and a 503 from the owner itself is relayed unchanged.
 
 ```php
 use OpenWA\Exceptions\OpenWANotFoundException;

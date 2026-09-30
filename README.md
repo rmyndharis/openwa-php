@@ -84,6 +84,25 @@ try {
 }
 ```
 
+## Receiving webhooks
+
+A webhook configured with a secret signs each delivery in its `X-OpenWA-Signature` header. Check it
+with `WebhookSignature::verify` against the raw request body, exactly as received, and decode the
+JSON only after the check passes: a re-encoded body can differ byte for byte and will not verify.
+The helper returns `false` for a missing, malformed or non-matching signature.
+
+```php
+use OpenWA\WebhookSignature;
+
+$raw = file_get_contents('php://input');
+if (!WebhookSignature::verify($raw, $_SERVER['HTTP_X_OPENWA_SIGNATURE'] ?? null, $secret)) {
+    http_response_code(401);
+    exit;
+}
+$delivery = json_decode($raw, true);
+// Process $delivery['event'] and $delivery['data'] here.
+```
+
 ## Notes
 
 - **Use HTTPS in production** — the API key is sent as `X-API-Key` and is bearer-equivalent.

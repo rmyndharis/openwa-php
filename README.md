@@ -15,7 +15,10 @@ Requires PHP 8.1+ and Guzzle 7. The namespace is `OpenWA\`.
 This README describes `main`. The 0.5.0 release lacks `sessions->getProxy`,
 `sessions->updateProxy`, `messages->clickButton`, `WebhookSignature::verify`, the
 `getErrorCode()`, `getRetryAfterSeconds()` and `getHeaders()` exception methods, the refusal of an
-empty, `.` or `..` id and the `sessions->create()` fix that sends an empty `config` as `{}`; they
+empty, `.` or `..` id, the `sessions->create()` fix that sends an empty `config` as `{}`, the
+`allowInsecureHttp` option (0.5.0 always raises an `E_USER_WARNING` for a non-local `http://`
+`baseUrl`) and the `null` return of `catalog->info()` and `catalog->product()` for a missing catalog
+or product (0.5.0 throws a `TypeError`); they
 ship with the next SDK release. See [the SDK overview](../README.md#coverage).
 
 ## Usage

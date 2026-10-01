@@ -326,12 +326,33 @@ class ClientTest extends TestCase
     public function testTimeoutWithErrno28MapsToTimeoutException(): void
     {
         // Regression guard: cURL error 28 (CURLE_OPERATION_TIMEDOUT) must map to
-        // OpenWATimeoutException, regardless of the message wording.
+        // OpenWATimeoutException, regardless of the message wording. The message
+        // deliberately avoids 'timed out' so only the errno check can match it.
         $timeoutRequest = new \GuzzleHttp\Exception\ConnectException(
-            'cURL error 28: Operation timed out',
+            'cURL error 28: Zeitlimit für Vorgang überschritten',
             new \GuzzleHttp\Psr7\Request('GET', '/api/sessions'),
             null,
             ['errno' => 28],
+        );
+        $mock = new \GuzzleHttp\Handler\MockHandler([$timeoutRequest]);
+        $httpClient = new \GuzzleHttp\Client(['handler' => \GuzzleHttp\HandlerStack::create($mock)]);
+        $client = new \OpenWA\Client([
+            'baseUrl' => 'http://localhost:2785',
+            'apiKey' => 'k',
+            'httpClient' => $httpClient,
+        ]);
+
+        $this->expectException(OpenWATimeoutException::class);
+        $client->sessions->list();
+    }
+
+    public function testTimedOutMessageWithoutErrnoMapsToTimeoutException(): void
+    {
+        // Transports that leave the handler context empty (e.g. the stream handler)
+        // are classified by the 'timed out' message instead.
+        $timeoutRequest = new \GuzzleHttp\Exception\ConnectException(
+            'Connection timed out after 10001 milliseconds',
+            new \GuzzleHttp\Psr7\Request('GET', '/api/sessions'),
         );
         $mock = new \GuzzleHttp\Handler\MockHandler([$timeoutRequest]);
         $httpClient = new \GuzzleHttp\Client(['handler' => \GuzzleHttp\HandlerStack::create($mock)]);

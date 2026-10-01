@@ -27,11 +27,13 @@ class ResourcesTest extends TestCase
         $client->sessions->list();
         $this->assertSame('/api/sessions', $backend->calls()[0]['path']);
         $client->sessions->get('s1');
+        $this->assertRequest($backend, 'GET', '/api/sessions/s1');
         $client->sessions->create(['name' => 'n']);
         $this->assertSame(['name' => 'n'], $backend->lastCall()['body']);
         $client->sessions->start('s1');
         $this->assertStringContainsString('/sessions/s1/start', $backend->lastCall()['path']);
         $client->sessions->stop('s1');
+        $this->assertRequest($backend, 'POST', '/api/sessions/s1/stop');
         $client->sessions->logout('s1');
         $this->assertStringContainsString('/sessions/s1/logout', $backend->lastCall()['path']);
         $client->sessions->forceKill('s1');
@@ -86,6 +88,7 @@ class ResourcesTest extends TestCase
         $backend->on(201, ['id' => 'g1@g.us', 'subject' => 'G', 'participants' => []]);
         $client = $backend->makeClient();
         $client->groups->list('s');
+        $this->assertRequest($backend, 'GET', '/api/sessions/s/groups');
         $client->groups->get('s', 'g1@g.us');
         $this->assertStringContainsString('/groups/g1@g.us', $backend->calls()[1]['url']);
         $client->groups->create('s', ['name' => 'G', 'participants' => ['a@c.us']]);
@@ -126,7 +129,9 @@ class ResourcesTest extends TestCase
         $client->groups->setDescription('s', 'g', 'desc');
         $this->assertSame(['description' => 'desc'], $backend->calls()[1]['body']);
         $client->groups->leave('s', 'g');
+        $this->assertRequest($backend, 'POST', '/api/sessions/s/groups/g/leave');
         $client->groups->inviteCode('s', 'g');
+        $this->assertRequest($backend, 'GET', '/api/sessions/s/groups/g/invite-code');
         $client->groups->revokeInviteCode('s', 'g');
         $this->assertStringContainsString('/revoke', $backend->calls()[4]['url']);
     }
@@ -165,10 +170,13 @@ class ResourcesTest extends TestCase
         $client->contacts->list('s', ['limit' => 10]);
         $this->assertStringContainsString('limit=10', $backend->calls()[0]['url']);
         $client->contacts->get('s', 'a@c.us');
+        $this->assertRequest($backend, 'GET', '/api/sessions/s/contacts/a@c.us');
         $client->contacts->check('s', '628123');
         $this->assertStringContainsString('/check/628123', $backend->calls()[2]['url']);
         $client->contacts->profilePicture('s', 'a@c.us');
+        $this->assertRequest($backend, 'GET', '/api/sessions/s/contacts/a@c.us/profile-picture');
         $client->contacts->phone('s', 'x@lid');
+        $this->assertRequest($backend, 'GET', '/api/sessions/s/contacts/x@lid/phone');
     }
 
     public function testBlockUnblock(): void
@@ -222,12 +230,15 @@ class ResourcesTest extends TestCase
         $backend->on(200, ['success' => true]);
         $client = $backend->makeClient();
         $client->webhooks->list('s');
+        $this->assertRequest($backend, 'GET', '/api/sessions/s/webhooks');
         $client->webhooks->get('s', 'w1');
+        $this->assertRequest($backend, 'GET', '/api/sessions/s/webhooks/w1');
         $client->webhooks->create('s', ['url' => 'u', 'events' => ['*']]);
         $this->assertSame(['url' => 'u', 'events' => ['*']], $backend->calls()[2]['body']);
         $client->webhooks->update('s', 'w1', ['active' => false]);
         $this->assertSame('PUT', $backend->calls()[3]['method']);
         $client->webhooks->delete('s', 'w1');
+        $this->assertRequest($backend, 'DELETE', '/api/sessions/s/webhooks/w1');
         $client->webhooks->test('s', 'w1');
         $this->assertStringContainsString('/webhooks/w1/test', $backend->calls()[5]['url']);
     }
@@ -303,10 +314,13 @@ class ResourcesTest extends TestCase
         $backend->on(200, ['success' => true]);
         $client = $backend->makeClient();
         $client->chats->list('s');
+        $this->assertRequest($backend, 'GET', '/api/sessions/s/chats');
         $client->chats->markRead('s', ['chatId' => 'a@c.us']);
         $this->assertStringContainsString('/chats/read', $backend->calls()[1]['url']);
         $client->chats->markUnread('s', ['chatId' => 'a@c.us']);
+        $this->assertRequest($backend, 'POST', '/api/sessions/s/chats/unread');
         $client->chats->delete('s', ['chatId' => 'a@c.us']);
+        $this->assertRequest($backend, 'POST', '/api/sessions/s/chats/delete');
         $client->chats->sendState('s', ['chatId' => 'a@c.us', 'state' => 'typing']);
         $this->assertStringContainsString('/chats/typing', $backend->calls()[4]['url']);
     }
@@ -504,7 +518,9 @@ class ResourcesTest extends TestCase
         $client->health->check();
         $this->assertSame('/api/health', $backend->calls()[0]['path']);
         $client->health->live();
+        $this->assertRequest($backend, 'GET', '/api/health/live');
         $client->health->ready();
+        $this->assertRequest($backend, 'GET', '/api/health/ready');
         $client->auth();
         $this->assertSame('POST', $backend->calls()[3]['method']);
         $this->assertStringContainsString('/auth/validate', $backend->calls()[3]['url']);
@@ -545,4 +561,9 @@ class ResourcesTest extends TestCase
         $this->assertStringContainsString('call.whatsapp.com', $res['link']);
     }
 
+    private function assertRequest(MockBackend $backend, string $method, string $path): void
+    {
+        $this->assertSame($method, $backend->lastCall()['method']);
+        $this->assertSame($path, $backend->lastCall()['path']);
+    }
 }

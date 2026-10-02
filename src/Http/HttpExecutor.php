@@ -158,17 +158,19 @@ class HttpExecutor
                 'Accept' => 'application/json',
             ]),
         ];
-        // Build query string, skipping null values (so absent optionals aren't sent).
+        // Build query string, skipping null values (so absent optionals aren't sent). Guzzle's
+        // 'query' option would replace a query already in a raw path, so extend the URL instead.
+        $url = $this->baseUrl . $path;
         $query = array_filter($query, fn ($v) => $v !== null);
         if ($query !== []) {
-            $options['query'] = $query;
+            $url .= (str_contains($path, '?') ? '&' : '?') . http_build_query($query, '', '&', PHP_QUERY_RFC3986);
         }
         if ($body !== null) {
             $options['json'] = $body;
         }
 
         try {
-            $response = $this->http->request($method, $this->baseUrl . $path, $options);
+            $response = $this->http->request($method, $url, $options);
         } catch (ConnectException $e) {
             // cURL error 28 (CURLE_OPERATION_TIMEDOUT) is the canonical timeout
             // signal, surfaced via the handler context. We check errno first

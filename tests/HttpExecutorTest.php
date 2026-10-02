@@ -26,4 +26,17 @@ class HttpExecutorTest extends TestCase
         }
         $this->assertSame([], $backend->calls());
     }
+
+    public function testQueryParamsExtendAQueryAlreadyInThePath(): void
+    {
+        $backend = (new MockBackend())->on(200, [])->on(200, []);
+        $client = $backend->makeClient();
+
+        $client->request('GET', '/api/anything?a=1', ['b' => 2, 'skip' => null]);
+        $this->assertSame('/api/anything', $backend->lastCall()['path']);
+        $this->assertSame('a=1&b=2', $backend->lastCall()['query']);
+
+        $client->request('GET', '/api/anything', ['q' => 'a b']);
+        $this->assertSame('q=a%20b', $backend->lastCall()['query']);
+    }
 }

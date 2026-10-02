@@ -130,6 +130,11 @@ class HttpExecutor
      */
     private function send(string $method, string $path, array $query, $body): ResponseInterface
     {
+        // The path is appended to the base URL, so one without a leading "/" could move the host
+        // (".example.net/x", "@example.net/x") and send the API key there.
+        if (!str_starts_with($path, '/')) {
+            throw new \InvalidArgumentException('OpenWA: path must begin with "/": ' . $path);
+        }
         // Auth/JSON headers are applied per-request so they are correct whether
         // a default or injected client is used (and never leak Guzzle exceptions:
         // http_errors disabled so we translate status into typed SDK exceptions).

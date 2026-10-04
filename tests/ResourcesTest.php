@@ -562,6 +562,23 @@ class ResourcesTest extends TestCase
         $this->assertStringContainsString('call.whatsapp.com', $res['link']);
     }
 
+    public function testRedriveDeliveryFailuresPostsTheFilterOrAnEmptyObject(): void
+    {
+        $result = ['redriven' => 1, 'delivered' => 1, 'enqueued' => 0, 'failed' => 0, 'skipped' => 0, 'remaining' => 0];
+        $backend = new MockBackend();
+        $backend->on(200, $result);
+        $backend->on(200, $result);
+        $client = $backend->makeClient();
+
+        $this->assertSame($result, $client->webhooks->redriveDeliveryFailures(['sessionId' => 's', 'limit' => 10]));
+        $this->assertRequest($backend, 'POST', '/api/webhooks/delivery-failures/redrive');
+        $this->assertSame('{"sessionId":"s","limit":10}', $backend->rawBody(0));
+
+        // An empty filter must go out as a JSON object: `[]` is not a valid body for the DTO.
+        $client->webhooks->redriveDeliveryFailures();
+        $this->assertSame('{}', $backend->rawBody(1));
+    }
+
     private function assertRequest(MockBackend $backend, string $method, string $path): void
     {
         $this->assertSame($method, $backend->lastCall()['method']);

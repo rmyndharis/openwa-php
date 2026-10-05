@@ -157,3 +157,13 @@ exactly like one that worked.
 ## License
 
 MIT
+
+## Send idempotency
+
+Supply a unique caller-owned key for one logical send and reuse it when retrying that same call. Keys contain 1-255 visible ASCII characters; unrelated calls must use different keys. The SDK forwards the key without changing its retry policy or generating one automatically.
+
+```php
+$client->messages->sendText($sessionId, ['chatId' => '628123@c.us', 'text' => 'Hello'], 'order-123');
+```
+
+The gateway supports text, image, video, audio, document, sticker, location, contact, template, poll, reply and forward sends. Completed calls replay their response; pending or uncertain outcomes return 409, and a changed request with the same key returns 422. The gateway retains keys for 24 hours. Bulk, product and button operations have no such guarantee. Omit the key to preserve existing behavior.

@@ -83,9 +83,9 @@ class HttpExecutor
      * @throws OpenWAApiException  On any non-2xx response (typed subclass).
      * @throws OpenWATimeoutException On timeout.
      */
-    public function request(string $method, string $path, array $query = [], $body = null)
+    public function request(string $method, string $path, array $query = [], $body = null, ?string $idempotencyKey = null)
     {
-        $response = $this->send($method, $path, $query, $body);
+        $response = $this->send($method, $path, $query, $body, $idempotencyKey);
 
         $text = (string) $response->getBody();
         if ($response->getStatusCode() === 204 || $text === '') {
@@ -128,8 +128,11 @@ class HttpExecutor
      * @param array<string,mixed> $query
      * @param mixed|null          $body
      */
-    private function send(string $method, string $path, array $query, $body): ResponseInterface
+    private function send(string $method, string $path, array $query, $body, ?string $idempotencyKey = null): ResponseInterface
     {
+        if ($idempotencyKey !== null && preg_match('/\A[\x21-\x7E]{1,255}\z/', $idempotencyKey) !== 1) {
+            throw new \InvalidArgumentException('Idempotency-Key must contain 1-255 visible ASCII characters');
+        }
         // The path is appended to the base URL, so one without a leading "/" could move the host
         // (".example.net/x", "@example.net/x") and send the API key there.
         if (!str_starts_with($path, '/')) {
@@ -150,7 +153,8 @@ class HttpExecutor
             // case-insensitive and PSR-7 keeps every value, so a caller's copy in another case is dropped.
             'headers' => array_merge(array_filter(
                 $this->defaultHeaders,
-                fn ($name) => !in_array(strtolower((string) $name), ['x-api-key', 'content-type', 'accept'], true),
+                fn ($name) => !in_array(strtolower((string) $name), ['x-api-key', 'content-type', 'accept'], true)
+                    && ($idempotencyKey === null || strtolower((string) $name) !== 'idempotency-key'),
                 ARRAY_FILTER_USE_KEY
             ), [
                 'X-API-Key' => $this->apiKey,
@@ -158,6 +162,9 @@ class HttpExecutor
                 'Accept' => 'application/json',
             ]),
         ];
+        if ($idempotencyKey !== null) {
+            $options['headers']['Idempotency-Key'] = $idempotencyKey;
+        }
         // Build query string, skipping null values (so absent optionals aren't sent). Guzzle's
         // 'query' option would replace a query already in a raw path, so extend the URL instead.
         $url = $this->baseUrl . $path;

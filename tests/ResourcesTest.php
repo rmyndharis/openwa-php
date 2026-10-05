@@ -305,6 +305,15 @@ class ResourcesTest extends TestCase
 
     // ── Chats & Health ────────────────────────────────────────────────
 
+    public function testChatsPreserveOptionalLastMessageType(): void
+    {
+        $backend = new MockBackend();
+        $backend->on(200, [['id' => 'photo@c.us', 'lastMessageType' => 'image'], ['id' => 'empty@c.us']]);
+        $chats = $backend->makeClient()->chats->list('s');
+        $this->assertSame('image', $chats[0]['lastMessageType']);
+        $this->assertArrayNotHasKey('lastMessageType', $chats[1]);
+    }
+
     public function testChats(): void
     {
         $backend = new MockBackend();

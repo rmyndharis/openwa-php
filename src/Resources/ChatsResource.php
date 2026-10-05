@@ -22,6 +22,8 @@ class ChatsResource
     }
 
     /**
+     * Entries include lastMessageType when the engine knows the last message kind.
+     *
      * @param array<string,mixed> $query
      * @return array<int,array<string,mixed>>
      */

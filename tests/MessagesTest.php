@@ -58,15 +58,23 @@ class MessagesTest extends TestCase
         $backend = (new MockBackend())->on(200, [
             'messages' => [['id' => 'm1', 'body' => 'hi', 'chatId' => 'a@c.us']],
             'total' => 1,
+            'unknownTimestampTotal' => 2,
         ]);
         $client = $backend->makeClient();
-        $page = $client->messages->list('s1', ['limit' => 10]);
+        $page = $client->messages->list('s1', [
+            'limit' => 10, 'since' => 1789855200000.5, 'until' => 1789941600000,
+            'direction' => 'incoming', 'orderBy' => 'timestamp', 'type' => 'image', 'messageId' => 'M1',
+        ]);
         $this->assertArrayHasKey('messages', $page);
         $this->assertIsArray($page['messages']);
         $this->assertSame('m1', $page['messages'][0]['id']);
         $this->assertSame(1, $page['total']);
         $this->assertStringContainsString('/messages', $backend->lastCall()['path']);
         $this->assertStringContainsString('limit=10', $backend->lastCall()['query']);
+        foreach (['since=1789855200000.5', 'until=1789941600000', 'direction=incoming', 'orderBy=timestamp', 'type=image', 'messageId=M1'] as $field) {
+            $this->assertStringContainsString($field, $backend->lastCall()['query']);
+        }
+        $this->assertSame(2, $page['unknownTimestampTotal']);
     }
 
     public static function mediaSegments(): array

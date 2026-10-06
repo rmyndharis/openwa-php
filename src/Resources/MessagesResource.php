@@ -165,6 +165,7 @@ class MessagesResource
     }
 
     /**
+     * Poll messages include poll.name, poll.options, and poll.allowMultipleAnswers when available.
      * @param array<string,mixed> $query
      * @return array<int,array<string,mixed>>
      */

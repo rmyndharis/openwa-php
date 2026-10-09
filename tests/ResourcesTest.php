@@ -589,6 +589,17 @@ class ResourcesTest extends TestCase
         $this->assertSame('{}', $backend->rawBody(1));
     }
 
+    public function testRedriveDeliveryFailuresKeepsAnExplicitEmptyIdsList(): void
+    {
+        // The gateway reads ids: [] as "replay nothing" and an omitted ids as "replay up to 100 rows".
+        $backend = new MockBackend();
+        $backend->on(200, ['redriven' => 0, 'delivered' => 0, 'enqueued' => 0, 'failed' => 0, 'skipped' => 0, 'remaining' => 3]);
+
+        $backend->makeClient()->webhooks->redriveDeliveryFailures(['ids' => []]);
+
+        $this->assertSame('{"ids":[]}', $backend->rawBody(0));
+    }
+
     public function testSendMethodsForwardIdempotencyKeysWithoutChangingJson(): void
     {
         $cases = [
@@ -618,6 +629,8 @@ class ResourcesTest extends TestCase
                 $call = $backend->lastCall();
                 $this->assertSame('POST', $call['method'], $method);
                 $this->assertSame('/api/sessions/s/messages/' . $segment, $call['path'], $method);
+                // The key travels in its header only: in the URL it would reach proxy and access logs.
+                $this->assertSame('', $call['query'], $method);
                 $this->assertSame($body, $call['body'], $method);
                 $expected = $body;
                 if ($method === 'sendTemplate') {
@@ -647,6 +660,7 @@ class ResourcesTest extends TestCase
                 $client->messages->sendText('s', $body, $key);
                 $this->assertSame($key, $backend->lastCall()['headers']['idempotency-key']);
             }
+            $this->assertSame('', $backend->lastCall()['query']);
             $this->assertSame($body, $backend->lastCall()['body']);
         }
     }

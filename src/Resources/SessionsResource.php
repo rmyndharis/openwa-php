@@ -164,6 +164,9 @@ class SessionsResource
     }
 
     /**
+     * Request an 8-character pairing code for phone-based login. On whatsapp-web.js, never request one for a
+     * number that already has a linked session: WhatsApp can revoke that device. Link it by QR instead.
+     *
      * @param array<string,mixed> $body
      * @return array<string,mixed>
      */

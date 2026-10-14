@@ -1,6 +1,6 @@
 # rmyndharis/openwa
 
-This document describes `main`. Send idempotency, webhook failure redrive, message-window filters, poll choices, and last-message types are unreleased additions after SDK 0.5.1 and require the corresponding server changes after OpenWA 0.24.0.
+This document describes `main`. Send idempotency, webhook failure redrive, message-window filters, poll choices, last-message types, and the `event.response` webhook event name are unreleased additions after SDK 0.5.1 and require the corresponding server changes after OpenWA 0.24.0.
 
 Official PHP SDK for [OpenWA](https://github.com/rmyndharis/OpenWA), the open-source WhatsApp API Gateway. OpenWA is an independent project, not affiliated with or endorsed by WhatsApp or Meta.
 
@@ -170,4 +170,4 @@ Supply a unique caller-owned key for one logical send and reuse it when retrying
 $client->messages->sendText($sessionId, ['chatId' => '628123@c.us', 'text' => 'Hello'], 'order-123');
 ```
 
-The gateway supports text, image, video, audio, document, sticker, location, contact, template, poll, reply and forward sends. Completed calls replay their response; a 409 with the error `code` `IDEMPOTENCY_KEY_IN_PROGRESS` means the first request is still running, so retry with the same key later; a 409 `IDEMPOTENCY_OUTCOME_UNKNOWN` means the message may have been sent, so check the chat and, if it did not arrive, send again with a new key (the `code` tells them apart from the engine-not-ready 409). A changed request with the same key returns 422. The gateway retains keys for 24 hours. Bulk, product and button operations have no such guarantee. Omit the key to preserve existing behavior.
+The gateway supports text, image, video, audio, document, sticker, location, contact, template, poll, reply and forward sends. Completed calls replay their response; a 409 whose `getErrorCode()` is `IDEMPOTENCY_KEY_IN_PROGRESS` means the first request is still running, so retry with the same key later; a 409 `IDEMPOTENCY_OUTCOME_UNKNOWN` means the message may have been sent, so check the chat and, if it did not arrive, send again with a new key (`getErrorCode()` tells them apart from the 409 for a session that is not connected). A changed request with the same key returns 422. The gateway retains keys for 24 hours. Bulk, product and button operations have no such guarantee. Omit the key to preserve existing behavior.

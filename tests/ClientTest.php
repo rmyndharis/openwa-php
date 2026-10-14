@@ -219,6 +219,23 @@ class ClientTest extends TestCase
         }
     }
 
+    public function testAnErrorKindThatIsNotAStringDoesNotBreakTheMapping(): void
+    {
+        $backend = (new MockBackend())->on(502, [
+            'statusCode' => 502,
+            'message' => 'upstream failed',
+            'error' => ['detail' => 'x'],
+        ]);
+        try {
+            $backend->makeClient()->sessions->get('x');
+            $this->fail('Expected exception');
+        } catch (OpenWAApiException $e) {
+            $this->assertSame(502, $e->getStatus());
+            $this->assertNull($e->getErrorKind());
+            $this->assertStringContainsString('upstream failed', $e->getMessage());
+        }
+    }
+
     public function testErrorCarriesStatusAndBody(): void
     {
         $backend = (new MockBackend())->on(404, [

@@ -246,11 +246,14 @@ class HttpExecutor
         $reason = $response->getReasonPhrase();
         $message = "OpenWA API {$status} {$reason} — {$method} {$path}: {$messageText}";
 
+        // An intermediary that rewrites the body may send a non-string `error`; the kind stays unset then.
+        $errorKind = is_string($envelope['error'] ?? null) ? $envelope['error'] : null;
+
         return OpenWAApiException::classify(
             $status,
             $message,
             $data,
-            $envelope['error'] ?? null,
+            $errorKind,
             $response->getHeaders(),
         );
     }

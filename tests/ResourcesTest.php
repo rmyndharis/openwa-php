@@ -558,6 +558,8 @@ class ResourcesTest extends TestCase
         $client->groups->rejectMembershipRequests('s', 'g1@g.us');
         $this->assertStringEndsWith('/membership-requests/reject', $backend->lastCall()['url']);
         $this->assertSame([], $backend->lastCall()['body']);
+        // On the wire that is an empty object, as in the other SDKs, not an empty array.
+        $this->assertSame('{}', $backend->rawBody(2));
     }
 
     public function testCreateCallLink(): void

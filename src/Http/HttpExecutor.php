@@ -65,12 +65,16 @@ class HttpExecutor
     /**
      * Refuse a default header the HTTP stack would refuse, naming the header and never its value: the
      * stack's own message quotes the value, which would put a proxy credential in the application's log.
+     * Public so that the client can run it before it builds an executor, whose constructor frame holds the
+     * key and, before PHP 8.2, shows its first characters in a trace.
+     *
+     * A number, a boolean or null is sent as its text and a list as several values, as the stack does.
      *
      * @param array<mixed> $headers
      *
      * @throws OpenWAException
      */
-    private static function checkDefaultHeaders(array $headers): void
+    public static function checkDefaultHeaders(array $headers): void
     {
         foreach ($headers as $name => $value) {
             if (!is_string($name) || preg_match('/\A[!#$%&\'*+\-.^_`|~0-9A-Za-z]+\z/', $name) !== 1) {
@@ -78,14 +82,16 @@ class HttpExecutor
                     'OpenWA Client: defaultHeaders has a header name that is not a valid HTTP token'
                 );
             }
-            // A number is text to the HTTP stack, which sends its decimal form; the docblock says string.
-            $text = is_int($value) || is_float($value) ? (string) $value : $value;
-            if (!is_string($text) || preg_match('/\A[\t\x20-\x7e]*\z/', $text) !== 1) {
-                throw new OpenWAException(sprintf(
-                    'OpenWA Client: defaultHeaders value for "%s" must be text without control or non-ASCII '
-                    . 'characters; check for a stray newline',
-                    $name
-                ));
+            foreach (is_array($value) ? $value : [$value] as $each) {
+                if (is_scalar($each) || $each === null) {
+                    if (preg_match('/\A[\t\x20-\x7e]*\z/', (string) $each) === 1) {
+                        continue;
+                    }
+                    $reason = 'must be text without control or non-ASCII characters; check for a stray newline';
+                } else {
+                    $reason = 'must be text';
+                }
+                throw new OpenWAException(sprintf('OpenWA Client: defaultHeaders value for "%s" %s', $name, $reason));
             }
         }
     }

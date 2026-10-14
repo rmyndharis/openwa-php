@@ -71,16 +71,45 @@ class ClientTest extends TestCase
         $this->assertSame("a\tb c", $backend->lastCall()['headers']['x-trace'] ?? null);
     }
 
-    public function testANumericDefaultHeaderValueIsSentAsItsText(): void
+    public function testANumberABooleanOrNullDefaultHeaderValueIsSentAsItsText(): void
     {
         $backend = (new MockBackend())->on(200, []);
         (new \OpenWA\Client([
             'baseUrl' => 'http://localhost:2785',
             'apiKey' => 'k',
             'httpClient' => $backend->httpClient(),
-            'defaultHeaders' => ['X-Tenant-Id' => 42],
+            'defaultHeaders' => ['X-Tenant-Id' => 42, 'X-Ratio' => 1.5, 'X-Debug' => true, 'X-Empty' => null],
         ]))->request('GET', '/api/anything');
-        $this->assertSame('42', $backend->lastCall()['headers']['x-tenant-id'] ?? null);
+        $headers = $backend->lastCall()['headers'];
+        $this->assertSame('42', $headers['x-tenant-id'] ?? null);
+        $this->assertSame('1.5', $headers['x-ratio'] ?? null);
+        $this->assertSame('1', $headers['x-debug'] ?? null);
+    }
+
+    public function testADefaultHeaderThatIsNeitherTextNorAListOfItIsRefusedByName(): void
+    {
+        foreach ([new \stdClass(), [['nested']]] as $value) {
+            try {
+                new \OpenWA\Client(['baseUrl' => 'http://localhost:2785', 'apiKey' => 'k', 'defaultHeaders' => ['X-Bad' => $value]]);
+                $this->fail('Expected an exception for a header value that is not text');
+            } catch (\OpenWA\Exceptions\OpenWAException $e) {
+                $this->assertStringContainsString('X-Bad', $e->getMessage());
+                $this->assertStringContainsString('must be text', $e->getMessage());
+            }
+        }
+    }
+
+    // On PHP before 8.2 #[\SensitiveParameter] does nothing, and the frame of the executor's constructor
+    // lists the key: a refused header is refused before that frame exists.
+    public function testARefusedDefaultHeaderLeavesTheKeyOutOfItsTrace(): void
+    {
+        $key = 'owa_k1_0123456789abcdefghij';
+        try {
+            new \OpenWA\Client(['baseUrl' => 'https://wa.example.com', 'apiKey' => $key, 'defaultHeaders' => ['X-Proxy' => "tok\n"]]);
+            $this->fail('Expected an exception for an illegal header value');
+        } catch (\OpenWA\Exceptions\OpenWAException $e) {
+            $this->assertStringNotContainsString(substr($key, 0, 10), $e->getTraceAsString());
+        }
     }
 
     public function testRequiresBaseUrlAndApiKey(): void

@@ -84,7 +84,9 @@ class Client
      *     allowInsecureHttp?:bool
      * } $config
      *
-     * @throws OpenWAException If baseUrl or apiKey is missing.
+     * @throws OpenWAException If baseUrl or apiKey is missing, the key holds a control or non-ASCII
+     *         character (a surrounding space or newline is trimmed), or a default header name is not an
+     *         HTTP token or its value holds such a character.
      */
     public function __construct(#[\SensitiveParameter] array $config)
     {
@@ -107,6 +109,10 @@ class Client
         if (empty($config['allowInsecureHttp'])) {
             self::warnIfInsecureHttp($config['baseUrl']);
         }
+
+        // Before the executor exists: its constructor frame holds the key, which a trace shows in part on
+        // PHP before 8.2, where #[\SensitiveParameter] does nothing.
+        HttpExecutor::checkDefaultHeaders(is_array($config['defaultHeaders'] ?? null) ? $config['defaultHeaders'] : []);
 
         $this->http = new HttpExecutor(
             $config['baseUrl'],

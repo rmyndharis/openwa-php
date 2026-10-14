@@ -104,6 +104,9 @@ class ClientTest extends TestCase
     public function testARefusedDefaultHeaderLeavesTheKeyOutOfItsTrace(): void
     {
         $key = 'owa_k1_0123456789abcdefghij';
+        // A production php.ini drops the arguments from every trace, which would pass this vacuously: the
+        // setting is read when the exception is created, so it is switched off around the call.
+        $previous = ini_set('zend.exception_ignore_args', '0');
         try {
             new \OpenWA\Client(['baseUrl' => 'https://wa.example.com', 'apiKey' => $key, 'defaultHeaders' => ['X-Proxy' => "tok\n"]]);
             $this->fail('Expected an exception for an illegal header value');
@@ -113,6 +116,10 @@ class ClientTest extends TestCase
             if (PHP_VERSION_ID >= 80200) {
                 $this->assertStringNotContainsString('tok', (string) json_encode($e->getTrace()));
             }
+            // The trace has to carry arguments, or the assertions above prove nothing.
+            $this->assertStringContainsString('checkDefaultHeaders(', $e->getTraceAsString());
+        } finally {
+            ini_set('zend.exception_ignore_args', $previous === false ? '0' : $previous);
         }
     }
 

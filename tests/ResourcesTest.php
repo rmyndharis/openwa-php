@@ -616,7 +616,7 @@ class ResourcesTest extends TestCase
             ['reply', 'reply', ['chatId' => 'a@c.us', 'quotedMessageId' => 'q', 'text' => 'reply']],
             ['forward', 'forward', ['fromChatId' => 'a@c.us', 'toChatId' => 'b@c.us', 'messageId' => 'm']],
         ];
-        foreach ([null, '!', str_repeat('a', 255)] as $key) {
+        foreach ([null, '!', '~', 'a', str_repeat('a', 255)] as $key) {
             $backend = new MockBackend();
             $client = $backend->makeClient();
             foreach ($cases as $index => [$method, $segment, $body]) {
@@ -690,7 +690,7 @@ class ResourcesTest extends TestCase
     {
         $backend = new MockBackend();
         $client = $backend->makeClient();
-        foreach (['', ' ', 'contains space', "key\n", "\xC3\xA9", str_repeat('a', 256)] as $key) {
+        foreach (['', ' ', 'contains space', "key\n", "\xC3\xA9", "a\x7Fb", str_repeat('a', 256)] as $key) {
             try {
                 $client->messages->sendText('s', ['chatId' => 'a@c.us', 'text' => 'hello'], $key);
                 $this->fail('Expected invalid key to be refused');

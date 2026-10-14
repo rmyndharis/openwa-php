@@ -20,7 +20,7 @@ class ClientTest extends TestCase
         $backend->makeClient('http://localhost:2785', "owa_k1_secret\n")->request('GET', '/api/anything');
         $this->assertSame('owa_k1_secret', $backend->lastCall()['headers']['x-api-key'] ?? null);
 
-        foreach (['owa_k1 secret', "owa_k1_se\0cret", "owa_k1_s\u{e9}cret"] as $bad) {
+        foreach (["owa_k1_se\tcret", "owa_k1_se\0cret", "owa_k1_s\u{e9}cret", "owa_k1_se\ncret"] as $bad) {
             try {
                 (new MockBackend())->makeClient('http://localhost:2785', $bad);
                 $this->fail('Expected an exception for an illegal key');
@@ -32,6 +32,43 @@ class ClientTest extends TestCase
         $this->expectException(\OpenWA\Exceptions\OpenWAException::class);
         $this->expectExceptionMessage('apiKey is required');
         (new MockBackend())->makeClient('http://localhost:2785', "  \n");
+    }
+
+    public function testAKeyWithAnInnerSpaceIsAcceptedAsTheGatewayAndOtherClientsTakeIt(): void
+    {
+        $backend = (new MockBackend())->on(200, []);
+        $key = 'correct horse battery staple correct horse';
+        $backend->makeClient('http://localhost:2785', $key . "\n")->request('GET', '/api/anything');
+        $this->assertSame($key, $backend->lastCall()['headers']['x-api-key'] ?? null);
+    }
+
+    public function testADefaultHeaderTheStackWouldRefuseIsRefusedWithoutQuotingItsValue(): void
+    {
+        $cases = [['CF-Access-Client-Secret', "s3cret-token\n"], ['X-Trace', "caf\u{e9}"], ['X-Trace', "a\0b"]];
+        foreach ($cases as [$name, $value]) {
+            try {
+                new \OpenWA\Client(['baseUrl' => 'http://localhost:2785', 'apiKey' => 'k', 'defaultHeaders' => [$name => $value]]);
+                $this->fail('Expected an exception for an illegal header value');
+            } catch (\OpenWA\Exceptions\OpenWAException $e) {
+                $this->assertStringContainsString($name, $e->getMessage());
+                $this->assertStringNotContainsString(trim($value), $e->getMessage());
+            }
+        }
+        try {
+            new \OpenWA\Client(['baseUrl' => 'http://localhost:2785', 'apiKey' => 'k', 'defaultHeaders' => ['X Bad' => 'v']]);
+            $this->fail('Expected an exception for an illegal header name');
+        } catch (\OpenWA\Exceptions\OpenWAException $e) {
+            $this->assertStringContainsString('header name', $e->getMessage());
+        }
+        // A tab and plain printable ASCII are fine.
+        $backend = (new MockBackend())->on(200, []);
+        (new \OpenWA\Client([
+            'baseUrl' => 'http://localhost:2785',
+            'apiKey' => 'k',
+            'httpClient' => $backend->httpClient(),
+            'defaultHeaders' => ['X-Trace' => "a\tb c"],
+        ]))->request('GET', '/api/anything');
+        $this->assertSame("a\tb c", $backend->lastCall()['headers']['x-trace'] ?? null);
     }
 
     public function testRequiresBaseUrlAndApiKey(): void

@@ -51,6 +51,43 @@ class HttpExecutorTest extends TestCase
         $this->assertSame($key, $backend->lastCall()['headers']['x-api-key'] ?? null);
     }
 
+    /**
+     * A default header often carries the credential of a proxy in front of the gateway: it is held out of
+     * the property table with the key, and only its name shows.
+     */
+    public function testDefaultHeaderValuesDoNotAppearWhenTheClientIsDumpedEither(): void
+    {
+        $secret = 'PROXYSECRET';
+        $backend = (new MockBackend())->on(200, []);
+        $client = new \OpenWA\Client([
+            'baseUrl' => 'http://localhost:2785',
+            'apiKey' => 'owa_k1_test',
+            'httpClient' => $backend->httpClient(),
+            'defaultHeaders' => ['CF-Access-Client-Secret' => $secret],
+        ]);
+        $executor = (new \ReflectionObject($client))->getProperty('http')->getValue($client);
+
+        $this->assertStringNotContainsString($secret, print_r($client, true));
+        $this->assertStringContainsString('CF-Access-Client-Secret', print_r($client, true));
+        $this->assertStringNotContainsString($secret, var_export($client, true));
+        $this->assertStringNotContainsString($secret, var_export($executor, true));
+        $this->assertStringNotContainsString($secret, print_r((array) $executor, true));
+        // and the value is still what goes out on the wire
+        $client->request('GET', '/api/anything');
+        $this->assertSame($secret, $backend->lastCall()['headers']['cf-access-client-secret'] ?? null);
+    }
+
+    /** A copy would have no key and no headers, since both belong to the object they were given to. */
+    public function testAnExecutorCannotBeCloned(): void
+    {
+        $client = (new MockBackend())->makeClient();
+        $executor = (new \ReflectionObject($client))->getProperty('http')->getValue($client);
+
+        $this->expectException(\Error::class);
+        $copy = clone $executor;
+        $this->assertNotSame($executor, $copy);
+    }
+
     public function testQueryParamsExtendAQueryAlreadyInThePath(): void
     {
         $backend = (new MockBackend())->on(200, [])->on(200, []);

@@ -7,6 +7,7 @@ namespace OpenWA\Http;
 use GuzzleHttp\ClientInterface;
 use GuzzleHttp\Exception\ConnectException;
 use OpenWA\Exceptions\OpenWAApiException;
+use OpenWA\Exceptions\OpenWAException;
 use OpenWA\Exceptions\OpenWATimeoutException;
 use Psr\Http\Message\ResponseInterface;
 
@@ -21,18 +22,19 @@ use Psr\Http\Message\ResponseInterface;
 class HttpExecutor
 {
     /**
-     * The API keys of the executors, outside their property tables: print_r, var_dump, var_export, a
-     * (array) cast and a framework's dumper all read properties, and the key is bearer-equivalent.
+     * The API keys and default header values of the executors, outside their property tables: print_r,
+     * var_dump, var_export, an (array) cast and a framework's dumper all read properties, and both are
+     * bearer-equivalent (a header often carries the credential of a proxy in front of the gateway).
      *
-     * @var \WeakMap<HttpExecutor,string>|null
+     * @var \WeakMap<HttpExecutor,array{apiKey:string,headers:array<string,string>}>|null
      */
-    private static ?\WeakMap $keys = null;
+    private static ?\WeakMap $secrets = null;
 
     private ClientInterface $http;
     private float $timeout;
     private string $baseUrl;
-    /** @var array<string,string> */
-    private array $defaultHeaders;
+    /** @var list<string> Only the names: see $secrets for the values. */
+    private array $headerNames;
 
     /**
      * @param array<string,string> $defaultHeaders Applied UNDER the auth/JSON headers
@@ -40,16 +42,17 @@ class HttpExecutor
      */
     public function __construct(
         string $baseUrl,
-        string $apiKey,
+        #[\SensitiveParameter] string $apiKey,
         float $timeout = 30.0,
         ?ClientInterface $httpClient = null,
-        array $defaultHeaders = []
+        #[\SensitiveParameter] array $defaultHeaders = []
     ) {
+        self::checkDefaultHeaders($defaultHeaders);
         $this->timeout = $timeout;
-        self::$keys ??= new \WeakMap();
-        self::$keys[$this] = $apiKey;
+        self::$secrets ??= new \WeakMap();
+        self::$secrets[$this] = ['apiKey' => $apiKey, 'headers' => $defaultHeaders];
         $this->baseUrl = rtrim($baseUrl, '/');
-        $this->defaultHeaders = $defaultHeaders;
+        $this->headerNames = array_map('strval', array_keys($defaultHeaders));
         // Auth/JSON headers are applied per-request (in request()). Request URLs
         // are built absolute (baseUrl . path) so a base path prefix (e.g. /v1
         // behind a reverse proxy) is preserved; base_uri is intentionally unset,
@@ -60,8 +63,35 @@ class HttpExecutor
     }
 
     /**
+     * Refuse a default header the HTTP stack would refuse, naming the header and never its value: the
+     * stack's own message quotes the value, which would put a proxy credential in the application's log.
+     *
+     * @param array<mixed> $headers
+     *
+     * @throws OpenWAException
+     */
+    private static function checkDefaultHeaders(array $headers): void
+    {
+        foreach ($headers as $name => $value) {
+            if (!is_string($name) || preg_match('/\A[!#$%&\'*+\-.^_`|~0-9A-Za-z]+\z/', $name) !== 1) {
+                throw new OpenWAException(
+                    'OpenWA Client: defaultHeaders has a header name that is not a valid HTTP token'
+                );
+            }
+            if (!is_string($value) || preg_match('/\A[\t\x20-\x7e]*\z/', $value) !== 1) {
+                throw new OpenWAException(sprintf(
+                    'OpenWA Client: defaultHeaders value for "%s" must be text without control or non-ASCII '
+                    . 'characters; check for a stray newline',
+                    $name
+                ));
+            }
+        }
+    }
+
+    /**
      * What print_r and var_dump show of the executor, and so of every client and resource that holds it.
-     * The key is not among the properties at all (see $keys), so no dump, export or cast can reach it.
+     * The key and the header values are not among the properties at all (see $secrets), so no dump,
+     * export or cast can reach them.
      *
      * @return array<string,mixed>
      */
@@ -71,7 +101,7 @@ class HttpExecutor
             'baseUrl' => $this->baseUrl,
             'timeout' => $this->timeout,
             'apiKey' => '[redacted]',
-            'defaultHeaders' => array_keys($this->defaultHeaders),
+            'defaultHeaders' => $this->headerNames,
         ];
     }
 
@@ -170,6 +200,7 @@ class HttpExecutor
         // Auth/JSON headers are applied per-request so they are correct whether
         // a default or injected client is used (and never leak Guzzle exceptions:
         // http_errors disabled so we translate status into typed SDK exceptions).
+        $secrets = (self::$secrets ?? new \WeakMap())[$this] ?? ['apiKey' => '', 'headers' => []];
         $options = [
             'http_errors' => false,
             // Per-request options override injected Guzzle client defaults, so the SDK's configured
@@ -181,12 +212,12 @@ class HttpExecutor
             // Caller default headers first; auth/JSON win so they can't be clobbered. Header names are
             // case-insensitive and PSR-7 keeps every value, so a caller's copy in another case is dropped.
             'headers' => array_merge(array_filter(
-                $this->defaultHeaders,
+                $secrets['headers'],
                 fn ($name) => !in_array(strtolower((string) $name), ['x-api-key', 'content-type', 'accept'], true)
                     && ($idempotencyKey === null || strtolower((string) $name) !== 'idempotency-key'),
                 ARRAY_FILTER_USE_KEY
             ), [
-                'X-API-Key' => (self::$keys ?? new \WeakMap())[$this] ?? '',
+                'X-API-Key' => $secrets['apiKey'],
                 'Content-Type' => 'application/json',
                 'Accept' => 'application/json',
             ]),

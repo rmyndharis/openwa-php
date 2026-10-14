@@ -39,6 +39,16 @@ class HttpExecutorTest extends TestCase
         ob_start();
         var_dump($client);
         $this->assertStringNotContainsString($key, (string) ob_get_clean());
+        // The other ways a value is written out: an export, a cast, and what a framework dumper reads.
+        $this->assertStringNotContainsString($key, var_export($client, true));
+        $executor = (new \ReflectionObject($client))->getProperty('http')->getValue($client);
+        $this->assertStringNotContainsString($key, var_export($executor, true));
+        $this->assertStringNotContainsString($key, json_encode((array) $executor, JSON_PARTIAL_OUTPUT_ON_ERROR) ?: '');
+        $this->assertStringNotContainsString($key, print_r((array) $executor, true));
+        // and the key is still what goes out on the wire
+        $backend = (new MockBackend())->on(200, []);
+        $backend->makeClient('http://localhost:2785', $key)->request('GET', '/api/anything');
+        $this->assertSame($key, $backend->lastCall()['headers']['x-api-key'] ?? null);
     }
 
     public function testQueryParamsExtendAQueryAlreadyInThePath(): void

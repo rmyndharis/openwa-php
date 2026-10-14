@@ -20,9 +20,16 @@ use Psr\Http\Message\ResponseInterface;
  */
 class HttpExecutor
 {
+    /**
+     * The API keys of the executors, outside their property tables: print_r, var_dump, var_export, a
+     * (array) cast and a framework's dumper all read properties, and the key is bearer-equivalent.
+     *
+     * @var \WeakMap<HttpExecutor,string>|null
+     */
+    private static ?\WeakMap $keys = null;
+
     private ClientInterface $http;
     private float $timeout;
-    private string $apiKey;
     private string $baseUrl;
     /** @var array<string,string> */
     private array $defaultHeaders;
@@ -39,7 +46,8 @@ class HttpExecutor
         array $defaultHeaders = []
     ) {
         $this->timeout = $timeout;
-        $this->apiKey = $apiKey;
+        self::$keys ??= new \WeakMap();
+        self::$keys[$this] = $apiKey;
         $this->baseUrl = rtrim($baseUrl, '/');
         $this->defaultHeaders = $defaultHeaders;
         // Auth/JSON headers are applied per-request (in request()). Request URLs
@@ -52,8 +60,8 @@ class HttpExecutor
     }
 
     /**
-     * What print_r and var_dump show of the executor, and so of every client and resource that holds it:
-     * the API key is bearer-equivalent and must not reach a log line written while a call is debugged.
+     * What print_r and var_dump show of the executor, and so of every client and resource that holds it.
+     * The key is not among the properties at all (see $keys), so no dump, export or cast can reach it.
      *
      * @return array<string,mixed>
      */
@@ -65,6 +73,11 @@ class HttpExecutor
             'apiKey' => '[redacted]',
             'defaultHeaders' => array_keys($this->defaultHeaders),
         ];
+    }
+
+    /** A copy would have no key, since the key belongs to the object it was given to. */
+    private function __clone()
+    {
     }
 
     /**
@@ -173,7 +186,7 @@ class HttpExecutor
                     && ($idempotencyKey === null || strtolower((string) $name) !== 'idempotency-key'),
                 ARRAY_FILTER_USE_KEY
             ), [
-                'X-API-Key' => $this->apiKey,
+                'X-API-Key' => (self::$keys ?? new \WeakMap())[$this] ?? '',
                 'Content-Type' => 'application/json',
                 'Accept' => 'application/json',
             ]),

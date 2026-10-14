@@ -32,7 +32,7 @@ $client = new Client([
 $session = $client->sessions->create(['name' => 'my-session']);
 $client->sessions->start($session['id']);
 
-// Link the account before sending: scan sessions->getQrCode or use sessions->requestPairingCode,
+// Link the account before sending: scan sessions->getQrCode (or use sessions->requestPairingCode for a number with no linked session),
 // then wait for status 'ready'. An unlinked session answers the send with 409.
 $result = $client->messages->sendText($session['id'], [
     'chatId' => '628123456789@c.us',

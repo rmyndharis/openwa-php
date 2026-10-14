@@ -52,6 +52,22 @@ class HttpExecutor
     }
 
     /**
+     * What print_r and var_dump show of the executor, and so of every client and resource that holds it:
+     * the API key is bearer-equivalent and must not reach a log line written while a call is debugged.
+     *
+     * @return array<string,mixed>
+     */
+    public function __debugInfo(): array
+    {
+        return [
+            'baseUrl' => $this->baseUrl,
+            'timeout' => $this->timeout,
+            'apiKey' => '[redacted]',
+            'defaultHeaders' => array_keys($this->defaultHeaders),
+        ];
+    }
+
+    /**
      * Percent-encode a single path segment (e.g. a chat/message id) so a value
      * containing /, # or ? can't break out of its path position. WhatsApp-id
      * characters that are already path-safe (@, :, +) are kept readable.

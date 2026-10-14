@@ -27,6 +27,20 @@ class HttpExecutorTest extends TestCase
         $this->assertSame([], $backend->calls());
     }
 
+    /**
+     * A client that is dumped while a call is debugged must not write its bearer-equivalent key out.
+     */
+    public function testTheApiKeyDoesNotAppearWhenTheClientIsDumped(): void
+    {
+        $key = 'owa_k1_do_not_print';
+        $client = (new MockBackend())->makeClient('http://localhost:2785', $key);
+
+        $this->assertStringNotContainsString($key, print_r($client, true));
+        ob_start();
+        var_dump($client);
+        $this->assertStringNotContainsString($key, (string) ob_get_clean());
+    }
+
     public function testQueryParamsExtendAQueryAlreadyInThePath(): void
     {
         $backend = (new MockBackend())->on(200, [])->on(200, []);

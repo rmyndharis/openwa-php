@@ -14,6 +14,26 @@ use PHPUnit\Framework\TestCase;
 
 class ClientTest extends TestCase
 {
+    public function testTheApiKeyLosesATrailingNewlineAndAnIllegalOneIsRefusedWithoutBeingQuoted(): void
+    {
+        $backend = (new MockBackend())->on(200, []);
+        $backend->makeClient('http://localhost:2785', "owa_k1_secret\n")->request('GET', '/api/anything');
+        $this->assertSame('owa_k1_secret', $backend->lastCall()['headers']['x-api-key'] ?? null);
+
+        foreach (['owa_k1 secret', "owa_k1_se\0cret", "owa_k1_s\u{e9}cret"] as $bad) {
+            try {
+                (new MockBackend())->makeClient('http://localhost:2785', $bad);
+                $this->fail('Expected an exception for an illegal key');
+            } catch (\OpenWA\Exceptions\OpenWAException $e) {
+                $this->assertStringContainsString('apiKey', $e->getMessage());
+                $this->assertStringNotContainsString($bad, $e->getMessage());
+            }
+        }
+        $this->expectException(\OpenWA\Exceptions\OpenWAException::class);
+        $this->expectExceptionMessage('apiKey is required');
+        (new MockBackend())->makeClient('http://localhost:2785', "  \n");
+    }
+
     public function testRequiresBaseUrlAndApiKey(): void
     {
         $this->expectException(\OpenWA\Exceptions\OpenWAException::class);

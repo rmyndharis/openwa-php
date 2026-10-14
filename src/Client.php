@@ -91,8 +91,17 @@ class Client
         if (empty($config['baseUrl'])) {
             throw new OpenWAException('OpenWA Client: baseUrl is required');
         }
-        if (empty($config['apiKey'])) {
+        // A key read from a secret file usually ends in a newline, which the HTTP layer refuses with an error
+        // that quotes the whole key. Trim it, and refuse anything that is still not a plain token.
+        $apiKey = is_string($config['apiKey'] ?? null) ? trim($config['apiKey']) : ($config['apiKey'] ?? '');
+        if (empty($apiKey)) {
             throw new OpenWAException('OpenWA Client: apiKey is required');
+        }
+        if (!is_string($apiKey) || preg_match('/\A[\x21-\x7e]+\z/', $apiKey) !== 1) {
+            throw new OpenWAException(
+                'OpenWA Client: apiKey contains illegal characters (whitespace, control or non-ASCII); '
+                . 'check for a stray newline'
+            );
         }
 
         if (empty($config['allowInsecureHttp'])) {
@@ -101,7 +110,7 @@ class Client
 
         $this->http = new HttpExecutor(
             $config['baseUrl'],
-            $config['apiKey'],
+            $apiKey,
             $config['timeout'] ?? 30.0,
             $config['httpClient'] ?? null,
             $config['defaultHeaders'] ?? [],

@@ -74,7 +74,7 @@ class HttpExecutor
      *
      * @throws OpenWAException
      */
-    public static function checkDefaultHeaders(array $headers): void
+    public static function checkDefaultHeaders(#[\SensitiveParameter] array $headers): void
     {
         foreach ($headers as $name => $value) {
             if (!is_string($name) || preg_match('/\A[!#$%&\'*+\-.^_`|~0-9A-Za-z]+\z/', $name) !== 1) {

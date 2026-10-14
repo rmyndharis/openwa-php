@@ -109,6 +109,10 @@ class ClientTest extends TestCase
             $this->fail('Expected an exception for an illegal header value');
         } catch (\OpenWA\Exceptions\OpenWAException $e) {
             $this->assertStringNotContainsString(substr($key, 0, 10), $e->getTraceAsString());
+            // From PHP 8.2 the frames carry no argument values at all: the refused value is not in one.
+            if (PHP_VERSION_ID >= 80200) {
+                $this->assertStringNotContainsString('tok', (string) json_encode($e->getTrace()));
+            }
         }
     }
 

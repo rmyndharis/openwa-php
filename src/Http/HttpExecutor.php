@@ -78,7 +78,9 @@ class HttpExecutor
                     'OpenWA Client: defaultHeaders has a header name that is not a valid HTTP token'
                 );
             }
-            if (!is_string($value) || preg_match('/\A[\t\x20-\x7e]*\z/', $value) !== 1) {
+            // A number is text to the HTTP stack, which sends its decimal form; the docblock says string.
+            $text = is_int($value) || is_float($value) ? (string) $value : $value;
+            if (!is_string($text) || preg_match('/\A[\t\x20-\x7e]*\z/', $text) !== 1) {
                 throw new OpenWAException(sprintf(
                     'OpenWA Client: defaultHeaders value for "%s" must be text without control or non-ASCII '
                     . 'characters; check for a stray newline',

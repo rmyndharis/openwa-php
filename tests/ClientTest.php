@@ -71,6 +71,18 @@ class ClientTest extends TestCase
         $this->assertSame("a\tb c", $backend->lastCall()['headers']['x-trace'] ?? null);
     }
 
+    public function testANumericDefaultHeaderValueIsSentAsItsText(): void
+    {
+        $backend = (new MockBackend())->on(200, []);
+        (new \OpenWA\Client([
+            'baseUrl' => 'http://localhost:2785',
+            'apiKey' => 'k',
+            'httpClient' => $backend->httpClient(),
+            'defaultHeaders' => ['X-Tenant-Id' => 42],
+        ]))->request('GET', '/api/anything');
+        $this->assertSame('42', $backend->lastCall()['headers']['x-tenant-id'] ?? null);
+    }
+
     public function testRequiresBaseUrlAndApiKey(): void
     {
         $this->expectException(\OpenWA\Exceptions\OpenWAException::class);

@@ -1,6 +1,6 @@
 # rmyndharis/openwa
 
-This document describes `main`. Send idempotency, webhook failure redrive, message-window filters, poll choices, last-message types, and the `event.response` webhook event name are unreleased additions after SDK 0.5.1 and require the corresponding server changes after OpenWA 0.24.0.
+This document describes SDK 0.6.0. Send idempotency, webhook failure redrive, message-window filters, poll choices, last-message types, and the `event.response` webhook event name require OpenWA 0.25.0 or later.
 
 Official PHP SDK for [OpenWA](https://github.com/rmyndharis/OpenWA), the open-source WhatsApp API Gateway. OpenWA is an independent project, not affiliated with or endorsed by WhatsApp or Meta.
 
@@ -139,7 +139,7 @@ Cutting a release:
 1. If the minor line changes, update `extra.branch-alias.dev-main` in
    `composer.json` (e.g. `0.1.x-dev` → `0.2.x-dev`) and land it on `main`. The
    release workflow refuses to publish when the alias does not match the tag.
-2. Tag that commit `php-sdk-v<version>` (e.g. `php-sdk-v0.5.1`) and push the
+2. Tag that commit `php-sdk-v<version>` (e.g. `php-sdk-v0.6.0`) and push the
    tag. The SDK has its own version line — the monorepo's `v*` tags are the app
    version and never trigger an SDK release.
 3. The workflow runs the test suite, then tags the mirror `<version>` (no `v`
@@ -162,7 +162,7 @@ MIT
 
 ## Send idempotency
 
-The example below requires the unreleased SDK changes on `main`; SDK 0.5.1 does not expose this per-send key argument. The server must also include the send idempotency changes after OpenWA 0.24.0.
+The example below requires SDK 0.6.0 or later and OpenWA 0.25.0 or later. SDK 0.5.1 does not expose this per-send key argument.
 
 Supply a unique caller-owned key for one logical send and reuse it when retrying that same call. Keys contain 1-255 visible ASCII characters; unrelated calls must use different keys. The SDK forwards the key without changing its retry policy or generating one automatically.
 

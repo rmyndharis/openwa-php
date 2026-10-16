@@ -73,17 +73,51 @@ class ClientTest extends TestCase
 
     public function testANumberABooleanOrNullDefaultHeaderValueIsSentAsItsText(): void
     {
-        $backend = (new MockBackend())->on(200, []);
+        $mock = new \GuzzleHttp\Handler\MockHandler([new \GuzzleHttp\Psr7\Response(200)]);
+        $httpClient = new \GuzzleHttp\Client(['handler' => \GuzzleHttp\HandlerStack::create($mock)]);
         (new \OpenWA\Client([
             'baseUrl' => 'http://localhost:2785',
             'apiKey' => 'k',
-            'httpClient' => $backend->httpClient(),
-            'defaultHeaders' => ['X-Tenant-Id' => 42, 'X-Ratio' => 1.5, 'X-Debug' => true, 'X-Empty' => null],
+            'httpClient' => $httpClient,
+            'defaultHeaders' => [
+                'X-Tenant-Id' => 42,
+                'X-Ratio' => 1.5,
+                'X-Debug' => true,
+                'X-False' => false,
+                'X-Empty' => null,
+                'X-List' => ['first', 42, 1.5, true, false, null],
+            ],
         ]))->request('GET', '/api/anything');
-        $headers = $backend->lastCall()['headers'];
-        $this->assertSame('42', $headers['x-tenant-id'] ?? null);
-        $this->assertSame('1.5', $headers['x-ratio'] ?? null);
-        $this->assertSame('1', $headers['x-debug'] ?? null);
+        $request = $mock->getLastRequest();
+        $this->assertNotNull($request);
+        $this->assertSame(['42'], $request->getHeader('X-Tenant-Id'));
+        $this->assertSame(['1.5'], $request->getHeader('X-Ratio'));
+        $this->assertSame(['1'], $request->getHeader('X-Debug'));
+        $this->assertSame([''], $request->getHeader('X-False'));
+        $this->assertSame([''], $request->getHeader('X-Empty'));
+        $this->assertSame(['first', '42', '1.5', '1', '', ''], $request->getHeader('X-List'));
+    }
+
+    public function testAnEmptyHeaderListIsRefusedBeforeAnInjectedCredentialCanBeSent(): void
+    {
+        $mock = new \GuzzleHttp\Handler\MockHandler([new \GuzzleHttp\Psr7\Response(200)]);
+        $httpClient = new \GuzzleHttp\Client([
+            'handler' => \GuzzleHttp\HandlerStack::create($mock),
+            'headers' => ['X-Proxy-Credential' => 'private-default'],
+        ]);
+        try {
+            (new \OpenWA\Client([
+                'baseUrl' => 'http://localhost:2785',
+                'apiKey' => 'k',
+                'httpClient' => $httpClient,
+                'defaultHeaders' => ['X-Proxy-Credential' => []],
+            ]))->request('GET', '/api/anything');
+            $this->fail('Expected an exception for an empty header list');
+        } catch (\OpenWA\Exceptions\OpenWAException $e) {
+            $this->assertStringContainsString('X-Proxy-Credential', $e->getMessage());
+            $this->assertStringNotContainsString('private-default', $e->getMessage());
+        }
+        $this->assertNull($mock->getLastRequest());
     }
 
     public function testADefaultHeaderThatIsNeitherTextNorAListOfItIsRefusedByName(): void
@@ -449,27 +483,45 @@ class ClientTest extends TestCase
         }
     }
 
-    public function testTimeoutWithErrno28MapsToTimeoutException(): void
+    /** @dataProvider transportTimeouts */
+    public function testTransportTimeoutMapsWithoutAnEnglishMessage(\Throwable $failure, bool $binary): void
     {
-        // Regression guard: cURL error 28 (CURLE_OPERATION_TIMEDOUT) must map to
-        // OpenWATimeoutException, regardless of the message wording. The message
-        // deliberately avoids 'timed out' so only the errno check can match it.
-        $timeoutRequest = new \GuzzleHttp\Exception\ConnectException(
-            'cURL error 28: Zeitlimit für Vorgang überschritten',
-            new \GuzzleHttp\Psr7\Request('GET', '/api/sessions'),
-            null,
-            ['errno' => 28],
-        );
-        $mock = new \GuzzleHttp\Handler\MockHandler([$timeoutRequest]);
+        $mock = new \GuzzleHttp\Handler\MockHandler([$failure]);
         $httpClient = new \GuzzleHttp\Client(['handler' => \GuzzleHttp\HandlerStack::create($mock)]);
         $client = new \OpenWA\Client([
             'baseUrl' => 'http://localhost:2785',
             'apiKey' => 'k',
+            'timeout' => 1.25,
             'httpClient' => $httpClient,
         ]);
 
-        $this->expectException(OpenWATimeoutException::class);
-        $client->sessions->list();
+        try {
+            $binary ? $client->status->media('s', 'status') : $client->sessions->list();
+            $this->fail('Expected a timeout exception');
+        } catch (OpenWATimeoutException $e) {
+            $this->assertSame(1.25, $e->getTimeout());
+        }
+    }
+
+    public static function transportTimeouts(): array
+    {
+        $request = new \GuzzleHttp\Psr7\Request('GET', '/api/sessions');
+        $message = 'cURL error 28: Zeitlimit für Vorgang überschritten';
+        if (method_exists(\GuzzleHttp\Exception\ConnectException::class, 'getHandlerContext')) {
+            $failures = ['curl errno 28' => new \GuzzleHttp\Exception\ConnectException($message, $request, null, ['errno' => 28])];
+        } else {
+            $failures = [
+                'connect timeout' => new \GuzzleHttp\Exception\ConnectTimeoutException($message, $request),
+                'network timeout' => new \GuzzleHttp\Exception\NetworkTimeoutException($message, $request),
+                'response timeout' => new \GuzzleHttp\Exception\ResponseTimeoutException($message, $request, new \GuzzleHttp\Psr7\Response(200)),
+            ];
+        }
+        $cases = [];
+        foreach ($failures as $name => $failure) {
+            $cases[$name . ' JSON'] = [$failure, false];
+            $cases[$name . ' binary'] = [$failure, true];
+        }
+        return $cases;
     }
 
     public function testTimedOutMessageWithoutErrnoMapsToTimeoutException(): void
@@ -494,13 +546,10 @@ class ClientTest extends TestCase
 
     public function testConnectionRefusedDoesNotMapToTimeoutException(): void
     {
-        // Regression guard: a non-timeout ConnectException (errno 7) must NOT be
-        // misclassified as a timeout — it must propagate as ConnectException.
+        // A connection refusal must propagate unchanged instead of becoming a timeout.
         $refused = new \GuzzleHttp\Exception\ConnectException(
             'cURL error 7: connection refused',
             new \GuzzleHttp\Psr7\Request('GET', '/api/sessions'),
-            null,
-            ['errno' => 7],
         );
         $mock = new \GuzzleHttp\Handler\MockHandler([$refused]);
         $httpClient = new \GuzzleHttp\Client(['handler' => \GuzzleHttp\HandlerStack::create($mock)]);
@@ -510,7 +559,11 @@ class ClientTest extends TestCase
             'httpClient' => $httpClient,
         ]);
 
-        $this->expectException(\GuzzleHttp\Exception\ConnectException::class);
-        $client->sessions->list();
+        try {
+            $client->sessions->list();
+            $this->fail('Expected a connection exception');
+        } catch (\GuzzleHttp\Exception\ConnectException $e) {
+            $this->assertSame($refused, $e);
+        }
     }
 }

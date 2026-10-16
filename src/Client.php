@@ -80,7 +80,7 @@ class Client
      *     apiKey:string,
      *     timeout?:float,
      *     httpClient?:?\GuzzleHttp\ClientInterface|null,
-     *     defaultHeaders?:array<string,string>,
+     *     defaultHeaders?:array<string,scalar|null|non-empty-array<array-key,scalar|null>>,
      *     allowInsecureHttp?:bool
      * } $config
      *

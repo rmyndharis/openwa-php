@@ -544,6 +544,31 @@ class ClientTest extends TestCase
         return $cases;
     }
 
+    public function testTheTimeoutIsAlsoTheIdleReadTimeoutOnGuzzle8Only(): void
+    {
+        // Guzzle 8's stream handler (a host without ext-curl) also stops a connection that stays silent for
+        // 60 s unless read_timeout says otherwise, which would cut off a longer timeout, and 0 means no bound.
+        // Guzzle 7 reads the option differently (0 and fractions end reads at once), so it is left out there.
+        foreach ([100.0, 1.25, 0.0] as $timeout) {
+            $mock = new \GuzzleHttp\Handler\MockHandler([new \GuzzleHttp\Psr7\Response(200)]);
+            $client = new \OpenWA\Client([
+                'baseUrl' => 'http://localhost:2785',
+                'apiKey' => 'k',
+                'timeout' => $timeout,
+                'httpClient' => new \GuzzleHttp\Client(['handler' => \GuzzleHttp\HandlerStack::create($mock)]),
+            ]);
+            $client->request('GET', '/api/anything');
+            $options = $mock->getLastOptions();
+
+            $this->assertSame($timeout, $options['timeout']);
+            if (\GuzzleHttp\ClientInterface::MAJOR_VERSION >= 8) {
+                $this->assertSame($timeout, $options['read_timeout'] ?? null);
+            } else {
+                $this->assertArrayNotHasKey('read_timeout', $options);
+            }
+        }
+    }
+
     public function testTimedOutMessageWithoutErrnoMapsToTimeoutException(): void
     {
         // Transports that leave the handler context empty (e.g. the stream handler)

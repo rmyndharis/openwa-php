@@ -242,6 +242,12 @@ class HttpExecutor
                 'Accept' => 'application/json',
             ]),
         ];
+        // Guzzle 8's stream handler also stops a connection that stays silent for 60 s (read_timeout, 0 disables
+        // it), which would cut off a longer timeout or none. Guzzle 7 reads the option differently (0 and
+        // fractions end reads at once), so only 8 is told; cURL handlers ignore it.
+        if (ClientInterface::MAJOR_VERSION >= 8) {
+            $options['read_timeout'] = $this->timeout;
+        }
         if ($idempotencyKey !== null) {
             $options['headers']['Idempotency-Key'] = $idempotencyKey;
         }

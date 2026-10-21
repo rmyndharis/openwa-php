@@ -6,7 +6,10 @@ namespace OpenWA\Tests;
 
 use OpenWA\Exceptions\OpenWAApiException;
 use OpenWA\Exceptions\OpenWAAuthException;
+use OpenWA\Exceptions\OpenWAConflictException;
+use OpenWA\Exceptions\OpenWAForbiddenException;
 use OpenWA\Exceptions\OpenWANotFoundException;
+use OpenWA\Exceptions\OpenWANotImplementedException;
 use OpenWA\Exceptions\OpenWARateLimitException;
 use OpenWA\Exceptions\OpenWAServiceUnavailableException;
 use OpenWA\Exceptions\OpenWATimeoutException;
@@ -374,6 +377,36 @@ class ClientTest extends TestCase
         $backend->makeClient()->sessions->list();
     }
 
+    /** @dataProvider statusClasses */
+    public function testEachStatusMapsToItsOwnExceptionClass(int $status, string $class): void
+    {
+        $backend = (new MockBackend())->on($status, ['statusCode' => $status, 'message' => 'x', 'error' => 'E']);
+        try {
+            $backend->makeClient()->sessions->list();
+            $this->fail('Expected exception');
+        } catch (OpenWAApiException $e) {
+            // The exact class, not instanceof: every one of them is also an OpenWAApiException.
+            $this->assertSame($class, $e::class);
+            $this->assertSame($status, $e->getStatus());
+        }
+    }
+
+    public static function statusClasses(): array
+    {
+        return [
+            '401' => [401, OpenWAAuthException::class],
+            '403' => [403, OpenWAForbiddenException::class],
+            '404' => [404, OpenWANotFoundException::class],
+            '409' => [409, OpenWAConflictException::class],
+            '429' => [429, OpenWARateLimitException::class],
+            '501' => [501, OpenWANotImplementedException::class],
+            '503' => [503, OpenWAServiceUnavailableException::class],
+            '400' => [400, OpenWAApiException::class],
+            '500' => [500, OpenWAApiException::class],
+            '502' => [502, OpenWAApiException::class],
+        ];
+    }
+
     public function testExposesAllResources(): void
     {
         $client = (new MockBackend())->makeClient();
@@ -500,6 +533,44 @@ class ClientTest extends TestCase
         } catch (OpenWAServiceUnavailableException $e) {
             $this->assertSame(503, $e->getStatus());
             $this->assertStringContainsString('{"mainDatabase":{"status":"down"}}', $e->getMessage());
+        }
+    }
+
+    public function testASuccessBodyThatIsNotJsonComesBackAsText(): void
+    {
+        $backend = new MockBackend();
+        $client = $backend->makeClient();
+        $backend->onRaw(200, 'plain text ok', ['Content-Type' => 'text/plain']);
+        $this->assertSame('plain text ok', $client->request('GET', '/api/anything'));
+
+        // The JSON literal null is JSON: it decodes to null, not to the text "null".
+        $backend->onRaw(200, 'null', ['Content-Type' => 'application/json']);
+        $this->assertNull($client->request('GET', '/api/anything'));
+    }
+
+    public function testAnErrorBodyThatIsNotJsonIsKeptAsText(): void
+    {
+        $backend = new MockBackend();
+        $client = $backend->makeClient();
+        // A proxy in front of the gateway answers 502 with a page of its own.
+        $backend->onRaw(502, '<html>Bad Gateway</html>', ['Content-Type' => 'text/html']);
+        try {
+            $client->request('GET', '/api/anything');
+            $this->fail('Expected exception');
+        } catch (OpenWAApiException $e) {
+            $this->assertSame(502, $e->getStatus());
+            $this->assertSame('<html>Bad Gateway</html>', $e->getBody());
+            $this->assertStringContainsString('<html>Bad Gateway</html>', $e->getMessage());
+        }
+
+        // The JSON literal null is JSON here too: no body to keep, and the status text names the failure.
+        $backend->onRaw(500, 'null', ['Content-Type' => 'application/json']);
+        try {
+            $client->request('GET', '/api/anything');
+            $this->fail('Expected exception');
+        } catch (OpenWAApiException $e) {
+            $this->assertNull($e->getBody());
+            $this->assertStringContainsString('Internal Server Error', $e->getMessage());
         }
     }
 

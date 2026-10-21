@@ -207,6 +207,8 @@ class HttpExecutor
      */
     private function send(string $method, string $path, array $query, $body, ?string $idempotencyKey = null): ResponseInterface
     {
+        // Guzzle 7 upper-cased the method itself; Guzzle 8 sends it as written, and the gateway refuses "get".
+        $method = strtoupper($method);
         if ($idempotencyKey !== null && preg_match('/\A[\x21-\x7E]{1,255}\z/', $idempotencyKey) !== 1) {
             throw new \InvalidArgumentException('Idempotency-Key must contain 1-255 visible ASCII characters');
         }

@@ -298,6 +298,26 @@ class ClientTest extends TestCase
         $this->assertStringContainsString('a=1', $backend->lastCall()['query']);
     }
 
+    public function testRawRequestSendsTheMethodInCapitals(): void
+    {
+        // Guzzle 7 upper-cased the method itself; Guzzle 8 sends it as written, and the gateway refuses "get".
+        $backend = new MockBackend();
+        $client = $backend->makeClient();
+        foreach (['get' => 'GET', 'Post' => 'POST', 'delete' => 'DELETE'] as $written => $sent) {
+            $backend->on(200, []);
+            $client->request($written, '/api/anything');
+            $this->assertSame($sent, $backend->lastCall()['method']);
+        }
+
+        $backend->on(404, ['statusCode' => 404, 'message' => 'missing', 'error' => 'Not Found']);
+        try {
+            $client->request('get', '/api/missing');
+            $this->fail('Expected exception');
+        } catch (OpenWANotFoundException $e) {
+            $this->assertStringContainsString('GET /api/missing', $e->getMessage());
+        }
+    }
+
     public function testBaseUrlPathPrefixIsPreserved(): void
     {
         // A base URL with a path prefix (e.g. behind a reverse proxy at /v1) must

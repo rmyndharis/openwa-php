@@ -165,6 +165,7 @@ class MessagesResource
     }
 
     /**
+     * Read a chat's message history live from WhatsApp. whatsapp-web.js only; Baileys answers 501.
      * Poll messages include poll.name, poll.options, and poll.allowMultipleAnswers when available.
      * @param array<string,mixed> $query
      * @return array<int,array<string,mixed>>
@@ -174,7 +175,11 @@ class MessagesResource
         return $this->http->request('GET', "/api/sessions/{$this->http->encodeSegment($sessionId)}/messages/{$this->http->encodeSegment($chatId)}/history", $query) ?? [];
     }
 
-    /** @return array<int,array<string,mixed>> */
+    /**
+     * Get the reactions on a message. whatsapp-web.js only; Baileys answers 501.
+     *
+     * @return array<int,array<string,mixed>>
+     */
     public function reactions(string $sessionId, string $chatId, string $messageId): array
     {
         return $this->http->request('GET', "/api/sessions/{$this->http->encodeSegment($sessionId)}/messages/{$this->http->encodeSegment($chatId)}/{$this->http->encodeSegment($messageId)}/reactions") ?? [];

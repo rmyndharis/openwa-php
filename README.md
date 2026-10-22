@@ -79,13 +79,15 @@ may still have been applied, so re-read the state before repeating it. In a rout
 forward that fails before reaching the owner node answers 503, one that fails after the request
 reached it answers 502 or 504, and a 503 from the owner itself is relayed unchanged.
 
-Timeouts differ on Guzzle's stream handler, which Guzzle uses on a host without `ext-curl` (the cURL
-handler is unaffected). A gateway that stays silent past the timeout surfaces as a Guzzle exception
-instead of `OpenWATimeoutException`: before the response headers on either Guzzle major
-(`ConnectException` on Guzzle 7, `RequestException` on Guzzle 8) and, on Guzzle 7, in the middle of the
-body. On Guzzle 7 a `timeout` of `0` does not turn the wait for the response headers off either: PHP's
-`default_socket_timeout` (60 seconds by default) still ends it. Catch `GuzzleHttp\Exception\TransferException`
-as well as `OpenWATimeoutException` if the application must handle a silent gateway on such a host.
+Guzzle's stream handler, which Guzzle uses on a host without `ext-curl`, throws a plain Guzzle exception
+when a gateway stays silent past the timeout, before the response headers on either Guzzle major and, on
+Guzzle 7, in the middle of the body. The SDK turns such a failure into `OpenWATimeoutException` when it has no
+response and lasted at least the whole `timeout`, so a failure of that length from another cause, such as a
+slow name-resolution error, is reported as a timeout too. A `timeout` of `0` has no bound to compare with, and
+on Guzzle 7 the wait for the response headers is still ended by PHP's `default_socket_timeout` (60 seconds by
+default), which surfaces as a `GuzzleHttp\Exception\ConnectException`: catch
+`GuzzleHttp\Exception\TransferException` as well as `OpenWATimeoutException` if the application sets
+`timeout` to `0` on such a host.
 
 ```php
 use OpenWA\Exceptions\OpenWANotFoundException;

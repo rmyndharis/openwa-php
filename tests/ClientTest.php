@@ -640,6 +640,99 @@ class ClientTest extends TestCase
         }
     }
 
+    /**
+     * Guzzle's stream handler (a host without ext-curl) reports a gateway that stays silent past the timeout
+     * as a ConnectException (before the headers, Guzzle 7) or a RequestException without a response (before
+     * the headers on Guzzle 8, in the middle of the body on Guzzle 7), with no errno and no timeout text.
+     *
+     * @dataProvider silentGatewayFailures
+     */
+    public function testAResponseLessFailureAfterTheWholeTimeoutMapsToTimeoutException(\Throwable $failure, bool $binary): void
+    {
+        $client = self::clientWhoseHandlerFails($failure, 0.05, 0.08);
+
+        try {
+            $binary ? $client->status->media('s', 'status') : $client->sessions->list();
+            $this->fail('Expected a timeout exception');
+        } catch (OpenWATimeoutException $e) {
+            $this->assertSame(0.05, $e->getTimeout());
+        }
+    }
+
+    /** @dataProvider silentGatewayFailures */
+    public function testTheSameFailureBeforeTheTimeoutIsNotATimeout(\Throwable $failure, bool $binary): void
+    {
+        $client = self::clientWhoseHandlerFails($failure, 30.0, 0.0);
+
+        try {
+            $binary ? $client->status->media('s', 'status') : $client->sessions->list();
+            $this->fail('Expected the transport exception');
+        } catch (\GuzzleHttp\Exception\TransferException $e) {
+            $this->assertSame($failure, $e);
+        }
+    }
+
+    public static function silentGatewayFailures(): array
+    {
+        $request = new \GuzzleHttp\Psr7\Request('GET', '/api/sessions');
+        $failures = [
+            'connect failure' => new \GuzzleHttp\Exception\ConnectException('Connection refused for URI http://localhost:2785/api/sessions', $request),
+            'request failure' => new \GuzzleHttp\Exception\RequestException('Unable to read from stream', $request),
+        ];
+        $cases = [];
+        foreach ($failures as $name => $failure) {
+            $cases[$name . ' JSON'] = [$failure, false];
+            $cases[$name . ' binary'] = [$failure, true];
+        }
+        return $cases;
+    }
+
+    public function testAFailureThatIsNotASilentGatewayStaysUnmappedEvenAfterTheTimeout(): void
+    {
+        $request = new \GuzzleHttp\Psr7\Request('GET', '/api/sessions');
+        $failures = [
+            // a response was received, so the gateway was not silent
+            'with a response' => new \GuzzleHttp\Exception\ServerException('Server error', $request, new \GuzzleHttp\Psr7\Response(502)),
+            // cURL reports its own errno, which decides the mapping (28 above, anything else here)
+            'cURL error' => new \GuzzleHttp\Exception\ConnectException('cURL error 6: Could not resolve host: gateway.invalid', $request),
+        ];
+        foreach ($failures as $name => $failure) {
+            try {
+                self::clientWhoseHandlerFails($failure, 0.05, 0.08)->sessions->list();
+                $this->fail("Expected the transport exception ({$name})");
+            } catch (\GuzzleHttp\Exception\TransferException $e) {
+                $this->assertSame($failure, $e, $name);
+            }
+        }
+    }
+
+    public function testNoTimeoutMeansNoFailureIsMappedToOne(): void
+    {
+        $failure = new \GuzzleHttp\Exception\ConnectException('Connection refused', new \GuzzleHttp\Psr7\Request('GET', '/api/sessions'));
+
+        try {
+            self::clientWhoseHandlerFails($failure, 0.0, 0.01)->sessions->list();
+            $this->fail('Expected the transport exception');
+        } catch (\GuzzleHttp\Exception\ConnectException $e) {
+            $this->assertSame($failure, $e);
+        }
+    }
+
+    private static function clientWhoseHandlerFails(\Throwable $failure, float $timeout, float $afterSeconds): \OpenWA\Client
+    {
+        $handler = static function () use ($failure, $afterSeconds) {
+            usleep((int) ($afterSeconds * 1e6));
+            return \GuzzleHttp\Promise\Create::rejectionFor($failure);
+        };
+
+        return new \OpenWA\Client([
+            'baseUrl' => 'http://localhost:2785',
+            'apiKey' => 'k',
+            'timeout' => $timeout,
+            'httpClient' => new \GuzzleHttp\Client(['handler' => \GuzzleHttp\HandlerStack::create($handler)]),
+        ]);
+    }
+
     public function testTimedOutMessageWithoutErrnoMapsToTimeoutException(): void
     {
         // Transports that leave the handler context empty (e.g. the stream handler)

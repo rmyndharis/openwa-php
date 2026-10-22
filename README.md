@@ -51,6 +51,8 @@ $client = new Client([
 ]);
 ```
 
+The SDK `timeout` (30 seconds by default) applies to every request, including those sent through an injected client, and overrides that client's own `timeout`. On Guzzle 8 it is also sent as `read_timeout`, the idle bound of Guzzle's stream handler (the one in use when ext-curl is missing, or when you inject a `StreamHandler`), so it replaces a `read_timeout` set on the injected client, and `0` removes that bound. The SDK has no separate idle-timeout setting: a stricter idle bound means a lower `timeout`, which also limits the whole call. cURL handlers ignore `read_timeout`, and Guzzle 7 leaves the injected client's value alone.
+
 The optional `defaultHeaders` map accepts strings, scalar values, null, and non-empty lists of those values. Numbers, booleans, and null are converted to text. An empty list is rejected by header name before any request is sent because Guzzle 8 cannot represent a header with zero values. Use `''` for an empty header value.
 
 ## Messaging

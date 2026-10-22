@@ -63,19 +63,23 @@ The optional `defaultHeaders` map accepts strings, scalar values, null, and non-
 
 A non-2xx response throws a typed `OpenWA\Exceptions\OpenWAApiException` subclass —
 `OpenWAAuthException` (401), `OpenWAForbiddenException` (403), `OpenWANotFoundException` (404),
-`OpenWAConflictException` (409), `OpenWARateLimitException` (429),
-`OpenWANotImplementedException` (501), `OpenWAServiceUnavailableException` (503) — each
-exposing `getStatus()` and the parsed `getBody()`. A timeout throws `OpenWATimeoutException`.
-503 is transient, but a catalog 503 can persist because WhatsApp may never answer that query,
-so bound any retry. A 429 from the global rate limiter lifts when its window expires (seconds for
-the per-second tier, up to an hour for the hourly tier by default), and `getRetryAfterSeconds()`
-carries its `Retry-After` header. A 429 whose `getErrorCode()` is `"SEND_PACING_LIMITED"` is usually
-not transient: do not retry it before `getRetryAfterSeconds()`, which then comes from the body: a
-few seconds when only sends still in flight caused it, the rest of the failure breaker's cooldown
+`OpenWAConflictException` (409), `OpenWARateLimitException` (429), `OpenWANotImplementedException`
+(501), `OpenWAServiceUnavailableException` (503) — each exposing `getStatus()` and the parsed
+`getBody()`. A timeout throws `OpenWATimeoutException`. 503 means the gateway could not complete the
+request right now: the path to WhatsApp failed, the gateway is draining or short of a dependency,
+or, on Baileys, WhatsApp throttled (code 429) or timed out (code 408) the request. Back off and
+retry later instead of at once, because repeating a throttled request straight away prolongs the
+throttle; a catalog 503 can persist because WhatsApp may never answer that query, so bound any
+retry. A 429 from the global rate limiter lifts when its window expires (seconds for the per-second
+tier, up to an hour for the hourly tier by default), and `getRetryAfterSeconds()` carries its
+`Retry-After` header. A 429 whose `getErrorCode()` is `"SEND_PACING_LIMITED"` is usually not
+transient: do not retry it before `getRetryAfterSeconds()`, which then comes from the body: a few
+seconds when only sends still in flight caused it, the rest of the failure breaker's cooldown
 (`SEND_PACING_BREAKER_COOLDOWN_MS`, 15 minutes by default) after a run of send failures, otherwise
-up to the next UTC day. `getHeaders()` returns the response headers. A 503 does not prove a write
-was never carried out: the engine answers it when WhatsApp did not confirm in time, and the change
-may still have been applied, so re-read the state before repeating it. In a routed deployment a
+up to the next UTC day. `getHeaders()` returns the response headers. A 503 does not always prove a
+write was never carried out: when WhatsApp timed out, the change may still have been applied, so
+re-read the state before repeating it. A throttle is the exception: it was turned away before it
+ran, so nothing was sent, and a keyed send frees its `Idempotency-Key`. In a routed deployment a
 forward that fails before reaching the owner node answers 503, one that fails after the request
 reached it answers 502 or 504, and a 503 from the owner itself is relayed unchanged.
 

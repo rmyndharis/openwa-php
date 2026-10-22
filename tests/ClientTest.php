@@ -718,6 +718,27 @@ class ClientTest extends TestCase
         }
     }
 
+    /**
+     * The start is hrtime(true): an int on 64-bit PHP and a float on 32-bit PHP. The closure calls the check
+     * from this strict file, as the executor itself does.
+     */
+    public function testTheElapsedTimeCheckTakesAnIntOrAFloatStart(): void
+    {
+        $executor = new \OpenWA\Http\HttpExecutor('http://localhost:2785', 'k', 1.0);
+        $failure = new \GuzzleHttp\Exception\ConnectException('Connection refused', new \GuzzleHttp\Psr7\Request('GET', '/api/sessions'));
+        $failedAfterTimeout = \Closure::bind(
+            fn (int|float $startedNs): bool => $this->failedAfterTimeout($failure, $startedNs),
+            $executor,
+            \OpenWA\Http\HttpExecutor::class
+        );
+
+        $now = hrtime(true);
+        foreach (['int' => $now, 'float' => (float) $now] as $type => $started) {
+            $this->assertFalse($failedAfterTimeout($started), "{$type} start, no time elapsed");
+            $this->assertTrue($failedAfterTimeout($started - 2_000_000_000), "{$type} start, 2 s elapsed");
+        }
+    }
+
     private static function clientWhoseHandlerFails(\Throwable $failure, float $timeout, float $afterSeconds): \OpenWA\Client
     {
         $handler = static function () use ($failure, $afterSeconds) {

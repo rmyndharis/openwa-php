@@ -300,8 +300,10 @@ class HttpExecutor
      * (before the headers on Guzzle 8, in the middle of the body on Guzzle 7): no errno, no timeout text.
      * Such a failure is a timeout when it took at least the whole timeout. cURL failures carry their own
      * "cURL error" text and are left alone, and a timeout of 0 (no bound) never matches.
+     *
+     * The start is hrtime(true), an int on 64-bit PHP and a float on 32-bit PHP.
      */
-    private function failedAfterTimeout(\Throwable $e, int $startedNs): bool
+    private function failedAfterTimeout(\Throwable $e, int|float $startedNs): bool
     {
         return $this->timeout > 0
             && (hrtime(true) - $startedNs) / 1e9 >= $this->timeout

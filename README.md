@@ -51,7 +51,7 @@ $client = new Client([
 ]);
 ```
 
-The SDK `timeout` (30 seconds by default) applies to every request, including those sent through an injected client, and overrides that client's own `timeout`. On Guzzle 8 it is also sent as `read_timeout`, the idle bound of Guzzle's stream handler (the one in use when ext-curl is missing, or when you inject a `StreamHandler`), so it replaces a `read_timeout` set on the injected client, and `0` removes that bound. The SDK has no separate idle-timeout setting: a stricter idle bound means a lower `timeout`, which also limits the whole call. cURL handlers ignore `read_timeout`, and Guzzle 7 leaves the injected client's value alone.
+The SDK `timeout` (30 seconds by default) applies to every request, including those sent through an injected client, and overrides that client's own `timeout`. On Guzzle 8 it is also sent as `read_timeout`, the idle bound of Guzzle's stream handler (the one in use when ext-curl is missing, or when you inject a `StreamHandler`), so it replaces a `read_timeout` set on the injected client, and `0` removes that bound. The SDK has no separate idle-timeout setting: a stricter idle bound means a lower `timeout`, which also limits the whole call except on Guzzle 7's stream handler, where it bounds each wait instead (see [Errors](#errors)). cURL handlers ignore `read_timeout`, and Guzzle 7 leaves the injected client's value alone.
 
 The optional `defaultHeaders` map accepts strings, scalar values, null, and non-empty lists of those values. Numbers, booleans, and null are converted to text. An empty list is rejected by header name before any request is sent because Guzzle 8 cannot represent a header with zero values. Use `''` for an empty header value.
 
@@ -89,7 +89,10 @@ unchanged.
 
 Guzzle's stream handler, which Guzzle uses on a host without `ext-curl`, throws a plain Guzzle exception
 when a gateway stays silent past the timeout, before the response headers on either Guzzle major and, on
-Guzzle 7, in the middle of the body. The SDK turns such a failure into `OpenWATimeoutException` when it has no
+Guzzle 7, in the middle of the body, where a silence can last up to about twice the `timeout` before it
+is cut off. On Guzzle 7 that handler bounds each wait, not the whole call, so a body that keeps trickling
+bytes is not cut off and arrives however long it takes; cURL, and Guzzle 8's stream handler, bound the
+whole call. The SDK turns such a failure into `OpenWATimeoutException` when it has no
 response and lasted at least the whole `timeout`, so a failure of that length from another cause, such as a
 slow name-resolution error, is reported as a timeout too. A `timeout` of `0` has no bound to compare with, and
 on Guzzle 7 the wait for the response headers is still ended by PHP's `default_socket_timeout` (60 seconds by

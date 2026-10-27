@@ -150,8 +150,10 @@ monorepo — Composer needs `composer.json` at a repository root and does not
 support subdirectories. Two workflows keep that mirror correct:
 
 - [`split-php-sdk.yml`](../../.github/workflows/split-php-sdk.yml) syncs the
-  mirror's `main` on every push that touches `sdk/php/**`, which is what
-  Packagist's `dev-main` follows.
+  mirror's `main` on every push to `main` that touches `sdk/php/**`, which is
+  what Packagist's `dev-main` follows. A run started from another branch
+  mirrors nothing, and a run whose `sdk/php` content is no longer that of the
+  current `main` leaves the mirror to the newer run.
 - [`php-sdk-release.yml`](../../.github/workflows/php-sdk-release.yml) cuts a
   versioned release by pushing a **tag** to the mirror. Packagist derives
   versions from that repository's tags, so a tag in this monorepo alone

@@ -587,6 +587,27 @@ class ClientTest extends TestCase
         $this->assertNull($client->request('GET', '/api/anything'));
     }
 
+    public function testATypedResourceRefusesASuccessBodyThatIsNotJson(): void
+    {
+        $backend = new MockBackend();
+        $client = $backend->makeClient();
+        // A baseUrl that points at a page server answers every route 200 with HTML.
+        $backend->onRaw(200, '<html>sign in</html>', ['Content-Type' => 'text/html']);
+        $backend->onRaw(200, '<html>sign in</html>', ['Content-Type' => 'text/html']);
+        $calls = [
+            fn () => $client->sessions->get('s'),
+            fn () => $client->auth(),
+        ];
+        foreach ($calls as $call) {
+            try {
+                $call();
+                $this->fail('Expected an OpenWAException for a body that is not JSON');
+            } catch (\OpenWA\Exceptions\OpenWAException $e) {
+                $this->assertStringContainsString('non-JSON response for', $e->getMessage());
+            }
+        }
+    }
+
     public function testAnErrorBodyThatIsNotJsonIsKeptAsText(): void
     {
         $backend = new MockBackend();

@@ -157,13 +157,24 @@ class HttpExecutor
      * @param array<string,mixed>  $query   Query parameters (null values skipped).
      * @param mixed|null           $body    JSON-serializable request body.
      *
+     * @param bool                 $allowText Return a 2xx body that is not JSON as its text. Off for the typed
+     *                                        resources, whose callers expect an array: they get an exception that
+     *                                        names the request, not a TypeError from the return type.
+     *
      * @return mixed Decoded JSON, or null for empty/204 responses.
      *
      * @throws OpenWAApiException  On any non-2xx response (typed subclass).
      * @throws OpenWATimeoutException On timeout.
+     * @throws OpenWAException On a 2xx body that is not JSON, unless $allowText.
      */
-    public function request(string $method, string $path, array $query = [], $body = null, ?string $idempotencyKey = null)
-    {
+    public function request(
+        string $method,
+        string $path,
+        array $query = [],
+        $body = null,
+        ?string $idempotencyKey = null,
+        bool $allowText = false
+    ) {
         $response = $this->send($method, $path, $query, $body, $idempotencyKey);
 
         $text = (string) $response->getBody();
@@ -172,7 +183,13 @@ class HttpExecutor
         }
 
         $decoded = json_decode($text, true);
-        return $decoded === null && json_last_error() !== JSON_ERROR_NONE ? $text : $decoded;
+        if ($decoded === null && json_last_error() !== JSON_ERROR_NONE) {
+            if (!$allowText) {
+                throw new OpenWAException("OpenWA: non-JSON response for {$method} {$path}");
+            }
+            return $text;
+        }
+        return $decoded;
     }
 
     /**

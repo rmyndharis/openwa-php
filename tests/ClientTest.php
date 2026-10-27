@@ -348,6 +348,45 @@ class ClientTest extends TestCase
         $this->assertCount(1, $backend->calls()); // the redirect target was never requested
     }
 
+    /** @dataProvider finalResponseStatuses */
+    public function testOnlyFinal2xxResponsesSucceed(int $status, bool $binary, bool $shouldError): void
+    {
+        $body = $status < 200 || $status === 204 ? '' : ($binary ? "\0PNG_fixture" : '{"ok":true}');
+        $backend = (new MockBackend())->onRaw($status, $body, [
+            'Content-Type' => $binary ? 'application/octet-stream' : 'application/json',
+        ]);
+        $client = $backend->makeClient();
+        $request = fn () => $binary ? $client->status->media('s', 'item') : $client->request('GET', '/api/anything');
+
+        if ($shouldError) {
+            try {
+                $request();
+                $this->fail('Expected an API exception for final HTTP ' . $status);
+            } catch (OpenWAApiException $error) {
+                $this->assertSame($status, $error->getStatus());
+            }
+        } elseif ($binary) {
+            $this->assertSame([
+                'data' => $status === 204 ? '' : "\0PNG_fixture",
+                'contentType' => $status === 204 ? null : 'application/octet-stream',
+            ], $request());
+        } else {
+            $this->assertSame($status === 204 ? null : ['ok' => true], $request());
+        }
+        $this->assertCount(1, $backend->calls());
+    }
+
+    public static function finalResponseStatuses(): array
+    {
+        $cases = [];
+        foreach (['JSON' => false, 'binary' => true] as $kind => $binary) {
+            foreach ([100 => true, 101 => true, 199 => true, 200 => false, 204 => false, 299 => false, 300 => true, 401 => true, 429 => true, 503 => true] as $status => $shouldError) {
+                $cases[$kind . ' ' . $status] = [$status, $binary, $shouldError];
+            }
+        }
+        return $cases;
+    }
+
     public function test204DeleteSucceedsWithNoBody(): void
     {
         $backend = (new MockBackend())->on(204);

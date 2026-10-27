@@ -552,6 +552,29 @@ class ClientTest extends TestCase
         }
     }
 
+    public function testAnOversizedRetryAfterHeaderSaturatesInsteadOfReadingAsZero(): void
+    {
+        // A numeric string of 309 digits or more converts through INF, which casts to 0.
+        $cases = [
+            [str_repeat('9', 19), PHP_INT_MAX],
+            [str_repeat('9', 25), PHP_INT_MAX],
+            [str_repeat('9', 308), PHP_INT_MAX],
+            [str_repeat('9', 309), PHP_INT_MAX],
+            [str_repeat('9', 400), PHP_INT_MAX],
+            [str_repeat('0', 400) . '7', 7],
+            ['0', 0],
+        ];
+        foreach ($cases as [$header, $expected]) {
+            $backend = (new MockBackend())->on(503, ['statusCode' => 503, 'message' => 'x'], ['Retry-After' => $header]);
+            try {
+                $backend->makeClient()->sessions->list();
+                $this->fail('Expected exception');
+            } catch (OpenWAApiException $e) {
+                $this->assertSame($expected, $e->getRetryAfterSeconds(), 'Retry-After of ' . strlen($header) . ' characters');
+            }
+        }
+    }
+
     public function testRetryAfterParsesWithoutTheCtypeExtension(): void
     {
         // The SDK does not require ext-ctype, so a build without it must still

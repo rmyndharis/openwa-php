@@ -97,7 +97,8 @@ class OpenWAApiException extends OpenWAException
     private static function retryAfter($fromBody, ?string $header): ?int
     {
         if ((is_int($fromBody) || is_float($fromBody)) && $fromBody >= 0) {
-            return (int) ceil($fromBody);
+            // Past the integer range a float cast wraps to a negative or short wait.
+            return $fromBody >= PHP_INT_MAX ? PHP_INT_MAX : (int) ceil($fromBody);
         }
         $value = trim((string) $header);
         if ($value === '') {

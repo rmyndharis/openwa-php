@@ -539,6 +539,19 @@ class ClientTest extends TestCase
         $this->assertSame([], (new OpenWARateLimitException('m', 429))->getHeaders());
     }
 
+    public function testAnOversizedRetryAfterBodyDoesNotWrapAround(): void
+    {
+        foreach ([9.3e18, 1.5e19, 1e20] as $seconds) {
+            $backend = (new MockBackend())->on(429, ['statusCode' => 429, 'message' => 'x', 'retryAfterSeconds' => $seconds]);
+            try {
+                $backend->makeClient()->sessions->list();
+                $this->fail('Expected exception');
+            } catch (OpenWARateLimitException $e) {
+                $this->assertSame(PHP_INT_MAX, $e->getRetryAfterSeconds(), "retryAfterSeconds {$seconds}");
+            }
+        }
+    }
+
     public function testRetryAfterParsesWithoutTheCtypeExtension(): void
     {
         // The SDK does not require ext-ctype, so a build without it must still

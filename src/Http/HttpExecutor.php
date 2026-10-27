@@ -260,7 +260,11 @@ class HttpExecutor
         $url = $this->baseUrl . $path;
         $query = array_filter($query, fn ($v) => $v !== null);
         if ($query !== []) {
-            $url .= (str_contains($path, '?') ? '&' : '?') . http_build_query($query, '', '&', PHP_QUERY_RFC3986);
+            $parts = explode('#', $url, 2);
+            $url = $parts[0] . (str_contains($parts[0], '?') ? '&' : '?') . http_build_query($query, '', '&', PHP_QUERY_RFC3986);
+            if (isset($parts[1])) {
+                $url .= '#' . $parts[1];
+            }
         }
         if ($body !== null) {
             $options['json'] = $body;

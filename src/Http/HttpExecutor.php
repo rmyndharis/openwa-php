@@ -225,6 +225,8 @@ class HttpExecutor
         $secrets = (self::$secrets ?? new \WeakMap())[$this] ?? ['apiKey' => '', 'headers' => []];
         $options = [
             'http_errors' => false,
+            // These APIs consume the whole body, so read failures must occur inside the transport catch.
+            'stream' => false,
             // Per-request options override injected Guzzle client defaults, so the SDK's configured
             // timeout is enforced consistently on both default and caller-supplied clients.
             'timeout' => $this->timeout,

@@ -268,6 +268,129 @@ class ResourcesTest extends TestCase
         $this->assertSame('{"name":"n","config":{}}', $backend->rawBody(3));
     }
 
+    /** @dataProvider objectMaps */
+    public function testMapFieldsStayObjectsForEveryArrayKeyShape(array $map): void
+    {
+        $backend = new MockBackend();
+        foreach (range(1, 5) as $ignored) {
+            $backend->on(200, []);
+        }
+        $client = $backend->makeClient();
+        $template = ['chatId' => 'c', 'templateName' => 't', 'vars' => $map];
+        $bulk = ['messages' => [['chatId' => 'c', 'type' => 'text', 'content' => ['text' => '{{0}}'], 'variables' => $map]], 'options' => []];
+        $webhook = ['url' => 'https://receiver.example/hook', 'events' => ['message.received'], 'headers' => $map];
+        $session = ['name' => 'fixture-session', 'config' => $map];
+        $original = serialize([$template, $bulk, $webhook, $session]);
+
+        $client->messages->sendTemplate('s', $template, 'template-key');
+        $client->messages->sendBulk('s', $bulk);
+        $client->webhooks->create('s', $webhook);
+        $client->webhooks->update('s', 'w', ['headers' => $map]);
+        $client->sessions->create($session);
+
+        $bodies = array_map(fn ($index) => json_decode($backend->rawBody($index), false, 512, JSON_THROW_ON_ERROR), range(0, 4));
+        foreach ([$bodies[0]->vars, $bodies[1]->messages[0]->variables, $bodies[2]->headers, $bodies[3]->headers, $bodies[4]->config] as $value) {
+            $this->assertInstanceOf(\stdClass::class, $value);
+            $this->assertSame($map, (array) $value);
+        }
+        $this->assertInstanceOf(\stdClass::class, $bodies[1]->options);
+        $this->assertSame([], (array) $bodies[1]->options);
+        $this->assertIsArray($bodies[1]->messages);
+        $this->assertSame($original, serialize([$template, $bulk, $webhook, $session]));
+        $this->assertSame('template-key', $backend->callAt(0)['headers']['idempotency-key']);
+        $this->assertArrayNotHasKey('idempotency-key', $backend->callAt(1)['headers']);
+    }
+
+    public static function objectMaps(): array
+    {
+        return [
+            'numeric zero' => [[0 => 'one']],
+            'contiguous numeric keys' => [[0 => 'one', 1 => 'two']],
+            'sparse numeric keys' => [[1 => 'one']],
+            'named keys' => [['custom' => 'value']],
+            'empty map' => [[]],
+        ];
+    }
+
+    /** @dataProvider referencedMaps */
+    public function testMapNormalizationPreservesCallerReferences(string $kind): void
+    {
+        $map = $kind === 'bulk-options' ? ['delayBetweenMessages' => 3000] : ['custom' => 'Alice'];
+        $item = ['chatId' => 'c', 'type' => 'text', 'content' => ['text' => '{{custom}}'], 'variables' => $map];
+        $items = [$item];
+        $body = match ($kind) {
+            'template' => ['chatId' => 'c', 'templateName' => 't', 'vars' => &$map],
+            'bulk-variable' => ['messages' => [['chatId' => 'c', 'type' => 'text', 'content' => ['text' => '{{custom}}'], 'variables' => &$map]]],
+            'bulk-item' => ['messages' => [&$item]],
+            'bulk-messages' => ['messages' => &$items],
+            'bulk-options' => ['messages' => [$item], 'options' => &$map],
+            'webhook-create', 'webhook-update' => ['headers' => &$map],
+            'session' => ['name' => 'fixture-session', 'config' => &$map],
+        };
+        $before = serialize([$body, $map, $item, $items]);
+        $backend = (new MockBackend())->on(200, []);
+        $client = $backend->makeClient();
+
+        match ($kind) {
+            'template' => $client->messages->sendTemplate('s', $body),
+            'bulk-variable', 'bulk-item', 'bulk-messages', 'bulk-options' => $client->messages->sendBulk('s', $body),
+            'webhook-create' => $client->webhooks->create('s', $body),
+            'webhook-update' => $client->webhooks->update('s', 'w', $body),
+            'session' => $client->sessions->create($body),
+        };
+
+        $this->assertSame($before, serialize([$body, $map, $item, $items]));
+        $sent = json_decode($backend->rawBody(0), false, 512, JSON_THROW_ON_ERROR);
+        $value = match ($kind) {
+            'template' => $sent->vars,
+            'bulk-variable', 'bulk-item', 'bulk-messages' => $sent->messages[0]->variables,
+            'bulk-options' => $sent->options,
+            'webhook-create', 'webhook-update' => $sent->headers,
+            'session' => $sent->config,
+        };
+        $this->assertInstanceOf(\stdClass::class, $value);
+        $this->assertSame($map, (array) $value);
+    }
+
+    public static function referencedMaps(): array
+    {
+        return [
+            'template variables' => ['template'],
+            'bulk variables' => ['bulk-variable'],
+            'bulk item' => ['bulk-item'],
+            'bulk messages' => ['bulk-messages'],
+            'bulk options' => ['bulk-options'],
+            'webhook create' => ['webhook-create'],
+            'webhook update' => ['webhook-update'],
+            'session config' => ['session'],
+        ];
+    }
+
+    public function testMapNormalizationPreservesNullOmissionAndProtocolLists(): void
+    {
+        $backend = new MockBackend();
+        foreach (range(1, 5) as $ignored) {
+            $backend->on(200, []);
+        }
+        $client = $backend->makeClient();
+        $client->messages->sendTemplate('s', ['chatId' => 'c', 'templateName' => 't', 'vars' => null]);
+        $client->messages->sendTemplate('s', ['chatId' => 'c', 'templateName' => 't']);
+        $client->messages->sendPoll('s', ['chatId' => 'c', 'name' => 'Q', 'options' => ['A', 'B'], 'mentions' => []]);
+        $client->webhooks->create('s', ['url' => 'https://receiver.example/hook', 'events' => ['message.received'], 'headers' => null, 'filters' => ['conditions' => []]]);
+        $client->request('POST', '/api/anything', [], ['first', 'second']);
+
+        $bodies = array_map(fn ($index) => json_decode($backend->rawBody($index), false, 512, JSON_THROW_ON_ERROR), range(0, 4));
+        $this->assertTrue(property_exists($bodies[0], 'vars'));
+        $this->assertNull($bodies[0]->vars);
+        $this->assertFalse(property_exists($bodies[1], 'vars'));
+        $this->assertSame(['A', 'B'], $bodies[2]->options);
+        $this->assertSame([], $bodies[2]->mentions);
+        $this->assertNull($bodies[3]->headers);
+        $this->assertSame(['message.received'], $bodies[3]->events);
+        $this->assertSame([], $bodies[3]->filters->conditions);
+        $this->assertSame(['first', 'second'], $bodies[4]);
+    }
+
     public function testBulkItemsEncodeEmptyVariablesAsJsonObject(): void
     {
         $backend = (new MockBackend())->on(200, ['id' => 'b1']);

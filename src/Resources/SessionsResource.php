@@ -90,10 +90,9 @@ class SessionsResource
      */
     public function create(array $body): array
     {
-        // config is a map: an empty PHP array would serialize as a JSON list [] and be rejected by the
-        // gateway's object validation. Cast the empty map to stdClass so it encodes as {}.
-        if (isset($body['config']) && $body['config'] === []) {
-            $body['config'] = new \stdClass();
+        // Preserve object-map shape without writing through caller-held references.
+        if (isset($body['config']) && is_array($body['config'])) {
+            $body = array_merge($body, ['config' => (object) $body['config']]);
         }
         return $this->http->request('POST', '/api/sessions', [], $body);
     }

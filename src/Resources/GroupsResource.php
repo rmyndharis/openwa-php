@@ -36,6 +36,8 @@ class GroupsResource
     }
 
     /**
+     * Create a group. Baileys only; whatsapp-web.js answers 501.
+     *
      * @param array<string,mixed> $body
      * @return array<string,mixed>
      */

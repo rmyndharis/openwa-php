@@ -137,6 +137,16 @@ class ResourcesTest extends TestCase
         $this->assertStringContainsString('/revoke', $backend->calls()[4]['url']);
     }
 
+    public function testGroupSetMemberLabel(): void
+    {
+        $backend = new MockBackend();
+        $backend->on(200, ['success' => true]);
+        $client = $backend->makeClient();
+        $client->groups->setMemberLabel('s', 'g@g.us', 'Site A');
+        $this->assertRequest($backend, 'PUT', '/api/sessions/s/groups/g@g.us/member-label');
+        $this->assertSame(['label' => 'Site A'], $backend->lastCall()['body']);
+    }
+
     public function testGroupJoinAndSettings(): void
     {
         $backend = new MockBackend();

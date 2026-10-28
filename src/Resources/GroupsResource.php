@@ -106,6 +106,18 @@ class GroupsResource
     }
 
     /**
+     * Set this account's member label in the group (an empty string clears it).
+     * Baileys only; whatsapp-web.js answers 501. A 200 means the label message
+     * was handed to WhatsApp; it cannot be read back.
+     *
+     * @return array<string,mixed>
+     */
+    public function setMemberLabel(string $sessionId, string $groupId, string $label): array
+    {
+        return $this->http->request('PUT', "/api/sessions/{$this->http->encodeSegment($sessionId)}/groups/{$this->http->encodeSegment($groupId)}/member-label", [], ['label' => $label]);
+    }
+
+    /**
      * Get group settings. Only the settings the active engine supports are
      * present: any of {announce, locked, ephemeralSeconds, memberAddMode} may
      * be absent. memberAddMode is 'all' or 'admins'.

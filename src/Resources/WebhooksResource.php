@@ -48,7 +48,9 @@ class WebhooksResource
      *                                        `sessionId`, `event`, `url`, `attempts`, `lastError` and
      *                                        `createdAt`, plus nullable `idempotencyKey`, `deliveryId`
      *                                        and `lastStatusCode`, and `replayable` (true when the row
-     *                                        can be replayed with redriveDeliveryFailures)
+     *                                        still holds its event data and its webhook still exists;
+     *                                        redriveDeliveryFailures replays it while that webhook is
+     *                                        active and subscribed to the event)
      */
     public function deliveryFailures(array $query = [])
     {

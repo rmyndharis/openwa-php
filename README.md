@@ -103,6 +103,14 @@ default), which surfaces as a `GuzzleHttp\Exception\ConnectException`: catch
 `GuzzleHttp\Exception\TransferException` as well as `OpenWATimeoutException` if the application sets
 `timeout` to `0` on such a host.
 
+A body that ends before the `Content-Length` it declares, such as a media download the gateway cut off
+when its store failed mid-read, is a failed transfer raised as a `GuzzleHttp\Exception\TransferException`:
+cURL and Guzzle 8 raise their own, and on Guzzle 7's stream handler, which returns such a body as if it
+were whole, the SDK raises a `RequestException` naming the request and the byte counts. That handler
+still returns two cut bodies without an error, because neither carries a length to compare with: a
+chunked body (the gateway sends a `Content-Length` with media whenever the store reports a size) and a
+compressed body the application asked for with its own `Accept-Encoding` default header.
+
 ```php
 use OpenWA\Exceptions\OpenWANotFoundException;
 

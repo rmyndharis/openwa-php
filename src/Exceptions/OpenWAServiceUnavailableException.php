@@ -15,18 +15,20 @@ namespace OpenWA\Exceptions;
  * answer that query, so bound any retry.
  *
  * On a send or a single write, a throttle turned the request away before it ran, so nothing was
- * sent or applied, and a keyed send frees its Idempotency-Key for the retry. A group settings
- * update with several fields applies them one at a time, so a 503 on a later field, a throttle
- * included, leaves the earlier ones applied; the message lists them after "already applied:", so
- * re-read the settings before retrying, or send one field per request. A timeout proves nothing:
- * the write may still have been applied, and a keyed send keeps its key taken. The non-idempotent
- * sends are deliberately left unbounded by the gateway so a slow WhatsApp reply never answers one,
- * and in a multi-node deployment a forward that fails before reaching the owner node answers 503. A
- * 503 from the owner itself is relayed unchanged and keeps its meaning, so a bounded write (group,
- * channel, contact or profile change) that timed out may still have been applied; re-read the state
- * before repeating it. A forward that fails after the request was sent answers 502 or 504 instead
- * (a plain OpenWAApiException): the owner may already have carried it out, so do not repeat a
- * non-idempotent send on those unchecked.
+ * sent or applied. A send also sent nothing when its recipient lookup failed, its connection closed
+ * before the message was written, or its media or preview image URL could not be fetched through
+ * the session's proxy. Each of these frees a keyed send's Idempotency-Key for the retry. A group
+ * settings update with several fields applies them one at a time, so a 503 on a later field, a
+ * throttle included, leaves the earlier ones applied; the message lists them after "already
+ * applied:", so re-read the settings before retrying, or send one field per request. A timeout
+ * proves nothing: the write may still have been applied, and a keyed send keeps its key taken. The
+ * non-idempotent sends are deliberately left unbounded by the gateway so a slow WhatsApp reply
+ * never answers one, and in a multi-node deployment a forward that fails before reaching the owner
+ * node answers 503. A 503 from the owner itself is relayed unchanged and keeps its meaning, so a
+ * bounded write (group, channel, contact or profile change) that timed out may still have been
+ * applied; re-read the state before repeating it. A forward that fails after the request was sent
+ * answers 502 or 504 instead (a plain OpenWAApiException): the owner may already have carried it
+ * out, so do not repeat a non-idempotent send on those unchecked.
  */
 class OpenWAServiceUnavailableException extends OpenWAApiException
 {

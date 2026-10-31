@@ -1,6 +1,6 @@
 # rmyndharis/openwa
 
-This document describes `main`. `groups->setMemberLabel` and the `match` search key are unreleased additions after SDK 0.7.0 and require the corresponding server changes after OpenWA 0.26.0. Send idempotency, webhook failure redrive, message-window filters, poll choices, last-message types, and the `event.response` webhook event name require OpenWA 0.25.0 or later.
+This document describes `main`. `groups->setMemberLabel` and the `match` search key are unreleased additions after SDK 0.7.0 and require OpenWA 0.27.0 or later. Send idempotency, webhook failure redrive, message-window filters, poll choices, last-message types, and the `event.response` webhook event name require OpenWA 0.25.0 or later.
 
 Official PHP SDK for [OpenWA](https://github.com/rmyndharis/OpenWA), the open-source WhatsApp API Gateway. OpenWA is an independent project, not affiliated with or endorsed by WhatsApp or Meta.
 
